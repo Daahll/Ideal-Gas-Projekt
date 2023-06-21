@@ -41,6 +41,13 @@ Create and initialise the IdealGas model.
 function idealgas(;
 	gases = Dict("Helium" => 4.0, "Hydrogen" => 1.0, "Oxygen" => 32.0),					# Gas types
 	volumes = Dict("Gasflasche" => [10.0, 2.0, 0.01], "Gastank" => [30, 100, 0.01]),	# Volume of containers
+	modes = Dict("Temperatur:Druck" => "temp-druck",
+				"Temperatur:Volumen" => "temp-vol",
+				 "Druck:Temperatur" => "druck-temp",
+				 "Druck:Volumen" => "druck-vol",
+				 "Volumen:Temperatur" => "vol-temp",
+				 "Volumen:Druck" => "vol-druck"),				# Modes of operation
+	mode = "temp-druck",																# actual Mode of operation
 	volume = [10.0, 2.0, 0.01], 														# Reale Maße des Containers
 	temp = 273.15,																		# Initial temperature of the gas in Kelvin
 	temp_old = copy(temp),																# Initial temperature of the gas in Kelvin
@@ -54,7 +61,7 @@ function idealgas(;
 	molare_masse = 4.0,																		# Helium Gas mass in atomic mass units
 	mass_kg = molare_masse * 1.66053906660e-27,												# Convert atomic/molecular mass to kg
 	mass_gas = round(n_mol * molare_masse, digits=3),								# Mass of gas
-	radius = 20.0,																			# Radius of Particles in the box
+	radius =10.0,																			# Radius of Particles in the box
 	e_inner = 3/2 * real_n_particles * temp * 8.314,									# Inner energy of the gas
 	extent = (volume[2]*300.0, volume[1]*100.0),												# Extent of Particles space
 )
@@ -77,6 +84,11 @@ function idealgas(;
 		:mass_kg		=> mass_kg,
 		:volumes	=> volumes,
 		:mass_gas	=> mass_gas,
+		:modes		=> modes,
+		:mode		=> mode,
+
+		##
+		:placeholder => 0.0,
 	)
 
     box = ABM( Particle, space; properties, scheduler = Schedulers.Randomly())
@@ -201,6 +213,17 @@ function model_step!(model::ABM)
 	println("molare_masse: ", model.molare_masse, " g/mol")
 	println("mass_kg: ", model.mass_kg, " kg")
 	"""
+	if model.mode == "temp-druck" || model.mode == "vol-druck"
+		pressure_pa = model.n_mol * 8.314 * model.temp / (model.volume[1] * model.volume[2] * model.volume[3])
+		model.pressure_pa = round(pressure_pa, digits=3)
+		model.pressure_bar = round(model.pressure_pa / 1e5, digits=3)
+	elseif model.mode == "temp-vol" || model.mode == "druck-vol"
+		pass
+	elseif model.mode == "druck-temp" || model.mode == "vol-temp"
+		temp = calc_temperature(model)
+		model.temp = round(temp, digits=2)
+	end
+
 
 	pressure_pa = model.n_mol * 8.314 * model.temp / (model.volume[1] * model.volume[2] * model.volume[3])
 	model.pressure_pa = round(pressure_pa, digits=3)
@@ -283,13 +306,30 @@ params = Dict(
 			ac = :red,
 			as = 20.0
 		)
-		
-		grid_layout = playground[3,1] = GridLayout()
+		# Figure Objekten neues Layout zuweisen durch feste Reihenfolge in figure.content[i]
+		model_plot = playground.content[1]	# Box 	
+		playground[0:2,0] = model_plot
+		entropy_plot = playground.content[9]
+		playground[0:1,2][1,0:1] = entropy_plot
+		# Sliders
+		playground[2,1] = playground.content[2]
+		playground[2,2] = playground.content[7]
+		# Buttons
+		gl_buttons = playground[3,1] = GridLayout()
+		gl_buttons[0,2] = playground.content[3]
+		gl_buttons[0,3] = playground.content[4]
+		gl_buttons[0,4] = playground.content[5]
+		gl_buttons[0,5] = playground.content[6]
+		playground[3,1][0,8] = playground.content[8]	# Update Button	
 
-		count_layout = grid_layout[1,1] = GridLayout()
-
-		gas_dropdown = Menu(count_layout[1,1], options = keys(box.gases), default = "Helium")
-		volume_dropdown = Menu(count_layout[2,1], options = keys(box.volumes), default = "Gasflasche")
+		# grid_layout = playground[3,1] = GridLayout()
+		# count_layout = grid_layout[1,1] = GridLayout()
+		gl_dropdowns = playground[3,0] = GridLayout()
+		gl_labels = playground[0,1] = GridLayout()
+		# gas_dropdown = Menu(count_layout[1,1], options = keys(box.gases), default = "Helium")
+		gas_dropdown = Menu(gl_dropdowns[0,0], options = keys(box.gases), default = "Helium")
+		# volume_dropdown = Menu(count_layout[2,1], options = keys(box.volumes), default = "Gasflasche")
+		volume_dropdown = Menu(gl_dropdowns[0,1], options = keys(box.volumes), default = "Gasflasche")
 		#volume_slider = SliderGrid(playground[1,1], (label = "Höhe: ", range = 0/50:0.1:10.0, startvalue=10.0))
 		#playground[5,1] = volume_slider
 		pressure_label = Label(count_layout[1,2], "Druck: " * string(pressure_bar(box))* " Bar")
@@ -319,9 +359,11 @@ params = Dict(
 			new_volume = box.volumes[selected_volume]
 			box.volume = new_volume
 			box.n_mol = box.pressure_pa * box.volume[1] * box.volume[2] * box.volume[3] / (8.314*box.temp)
-			box.mass_gas = round(box.n_mol * box.molare_masse, digits=3)
-		
-			
+			box.mass_gas = round(box.n_mol * box.molare_masse, digits=3)			
+		end
+
+		on(mode_dropdown.selection) do selected_mode
+			box.mode = box.modes[selected_mode]
 		end
 		playground
 	end
