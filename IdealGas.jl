@@ -65,17 +65,10 @@ function idealgas(;
 	init_n_mol = copy(n_mol), 															# Initial number of mol
 	real_n_particles = n_mol * 6.022e23,												# Real number of Particles in box
     n_particles = real_n_particles/1e23,												# Number of Particles in simulation box
-<<<<<<< Updated upstream
-	molare_masse = 4.0,																		# Helium Gas mass in atomic mass units
-	mass_kg = molare_masse * 1.66053906660e-27,												# Convert atomic/molecular mass to kg
-	mass_gas = round(n_mol * molare_masse, digits=3),								# Mass of gas
-	radius =10.0,																			# Radius of Particles in the box
-=======
 	molare_masse = 4.0,																	# Helium Gas mass in atomic mass units
 	mass_kg = molare_masse * 1.66053906660e-27,											# Convert atomic/molecular mass to kg
 	mass_gas = round(n_mol * molare_masse, digits=3),									# Mass of gas
 	radius = 8.0,																		# Radius of Particles in the box
->>>>>>> Stashed changes
 	e_inner = 3/2 * real_n_particles * temp * 8.314,									# Inner energy of the gas
 	extent = (volume[2]*300.0, volume[1]*100.0),												# Extent of Particles space
 )
@@ -315,18 +308,11 @@ params = Dict(
 			agent_step!,
 			model_step!,
 			mdata,
-<<<<<<< Updated upstream
-			params,
-			figure = (; resolution = (1600, 800)),
-			ac = :red,
-			as = 20.0
-=======
 			mlabels,
 			#params,
 			figure = (; resolution = (1300, 750)),
 			ac = :skyblue3,
 			as = 40.0
->>>>>>> Stashed changes
 		)
 		# Figure Objekten neues Layout zuweisen durch feste Reihenfolge in figure.content[i]
 		model_plot = playground.content[1]	# Box 	
@@ -350,15 +336,6 @@ params = Dict(
 		gl_labels = playground[0,1] = GridLayout()
 		# gas_dropdown = Menu(count_layout[1,1], options = keys(box.gases), default = "Helium")
 		gas_dropdown = Menu(gl_dropdowns[0,0], options = keys(box.gases), default = "Helium")
-<<<<<<< Updated upstream
-		# volume_dropdown = Menu(count_layout[2,1], options = keys(box.volumes), default = "Gasflasche")
-		volume_dropdown = Menu(gl_dropdowns[0,1], options = keys(box.volumes), default = "Gasflasche")
-		#volume_slider = SliderGrid(playground[1,1], (label = "Höhe: ", range = 0/50:0.1:10.0, startvalue=10.0))
-		#playground[5,1] = volume_slider
-		pressure_label = Label(count_layout[1,2], "Druck: " * string(pressure_bar(box))* " Bar")
-		mass_label = Label(count_layout[2,2], "Masse: " * string(box.mass_gas)* " g")
-		volume_label = Label(count_layout[3,2], "Volumen: " * string(box.volume[1] * box.volume[2] * box.volume[3])* " m^3 ; " * string(box.volume[1] * box.volume[2] * box.volume[3] * 1000) * " L")
-=======
 		mode_dropdown = Menu(gl_dropdowns[0,1], options = keys(box.modes), default = "Temperatur:Druck")
 
 		pressure_label = Label(gl_labels[2,0], "Druck: " * string(round(box.pressure_bar, digits=2))* " Bar", fontsize=22)
@@ -388,7 +365,6 @@ params = Dict(
 		volume_slider = Slider(slider_space[3,1], range = 0.1:0.1:30.0, startvalue=0.2)
 		volume_slider_value = Label(slider_space[3,2], string(volume_slider.value[]) * " m³")
 
->>>>>>> Stashed changes
 
 		on(abmobs.model) do _
 
