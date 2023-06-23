@@ -58,3 +58,14 @@ TODO 1:
 Anzahl der Partikel, auf basis der "realen" Partikelanzahl der Berechnungen, für die Darstellung kleiner skalieren
 
 
+TODO: 23.06.23
+- Zwei Modi für Volumen (Gasflasche (200L +- 50L), Gastank (30.000L +- 5000L))
+
+- N * k oder n * R
+- PV/T = nR = Nk
+
+- benutzte Formel zur Berechnung anzeigen
+
+- Fenster größe realtiv angeben, anstatt mit Pixeln ?
+
+- Partikelanzahl in abhängigkeit von Druck neu berechnen
