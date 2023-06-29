@@ -42,6 +42,7 @@ const R = 8.314 # Gaskonstante in J/(mol·K)
 Create and initialise the IdealGas model.
 """
 function idealgas(;
+	width = 500,
 	gases = Dict("Helium" => 4.0, "Hydrogen" => 1.0, "Oxygen" => 32.0),					# Gas types
 	modes = Dict("Temperatur:Druck" => "temp-druck",
 				"Temperatur:Volumen" => "temp-vol",
@@ -54,7 +55,7 @@ function idealgas(;
 	volume = calc_total_vol_dimension(total_volume), 									# Dimensions of the container
 	topBorder = total_volume/5.0,
 	temp = 293.15,																		# Initial temperature of the gas in Kelvin
-	temp_old = 293.15,###
+	temp_old = 293.15,
 	pressure_bar = 1.0,																	# Initial pressure of the gas in bar
 	pressure_pa =  pressure_bar*1e5,													# Initial pressure of the gas in Pascal
 	n_mol = pressure_pa * volume[1] * volume[2] * volume[3] / (8.314*temp),				# Number of mol
@@ -69,31 +70,32 @@ function idealgas(;
 	# U = 3/2 * N(Anzahl Part) * k(Boltzmann) * T = 3/2 * n(mol) * R * T
 	e_internal = 3/2 * n_mol * 8.314 * temp,											# Inner energy of the gas
 	entropy_change = 0.0,																# Change in entropy of the gas
-	extent = (500,500),																	# Extent of Particles space
+	extent = (width,width),																	# Extent of Particles space
 )
     space = ContinuousSpace(extent; spacing = radius/2.0)
 
 	properties = Dict(
-		:n_particles	=> n_particles,
-		:temp		=> temp,
-		:temp_old		=> temp_old,
-		:total_volume	=> total_volume,
-		:e_internal	=> e_internal,
+		:n_particles		=> n_particles,
+		:temp				=> temp,
+		:temp_old			=> temp_old,
+		:total_volume		=> total_volume,
+		:e_internal			=> e_internal,
 		:entropy_change 	=> entropy_change,
-		:pressure_pa	=> pressure_pa,
-		:pressure_bar	=> pressure_bar,
+		:pressure_pa		=> pressure_pa,
+		:pressure_bar		=> pressure_bar,
 		:real_n_particles	=> real_n_particles,
 		:n_mol				=> n_mol,
 		:volume				=> volume,
 		:init_n_mol			=> init_n_mol,
 		:gases				=> gases,
 		:molare_masse		=> molare_masse,
-		:mass_kg		=> mass_kg,
-		:mass_gas	=> mass_gas,
-		:topBorder => topBorder,
-		:step => 0,
+		:mass_kg			=> mass_kg,
+		:mass_gas			=> mass_gas,
+		:topBorder 			=> topBorder,
+		:step 				=> 0,
 		:modes				=> modes,
 		:mode				=> mode,
+		:objective 			=> create_heatmap(width),
 	)
 
 
@@ -110,11 +112,10 @@ function idealgas(;
 		#speed = scale_speed(speed, max_speed)  		# Scale speed to avoid excessive velocities
         add_agent!( box, vel, mass_kg, speed, radius, non_id, -Inf)
 	end
-
-	
-
     return box
 end
+
+#TODO: Function löschen & Überschüssige Codeschnippsel löschen
 #TODO: Zur Volumenveränderung zwei Buttons, erhöhen und erniedrigen
 #TODO: Volumenveränderung beschleunigt die Teilchen die gegen die Seite von der Arbeitverrichtet wird
 #-----------------------------------------------------------------------------------------
@@ -124,9 +125,30 @@ calc_total_vol_dimension( me, box)
 Calculates volume/dimension of a 3D-Space with [x, y=5, z=1], based on a given value of total volume.
 """
 function calc_total_vol_dimension(volume, x_axis_vol=5.0)
- 	y_axis_vol = volume/x_axis_vol
+	y_axis_vol = volume/x_axis_vol
  	return [y_axis_vol, x_axis_vol, 1.0] 
 end
+
+#-----------------------------------------------------------------------------------------
+"""
+	create_heatmap(width)
+
+		Creates the underlying heatmap as a representation of the gas-tank.
+"""
+	function create_heatmap(width::Int)
+		outer_rim = 1
+		heatarray = zeros(width, width)  # Initialize the heatarray with zeros
+	
+		map((i) -> begin
+			x = i[1]
+			y = i[2]
+			if (x >= 1 && x <= outer_rim) || (y >= 1 && y <= outer_rim) || (x <= width && x >= width - outer_rim) || (y <= width && y >= width - outer_rim)
+				heatarray[x, y] = 1.0
+			end
+		end, CartesianIndices(heatarray))
+	
+		return heatarray
+	end
 #-----------------------------------------------------------------------------------------
 """
 	agent_step!( me, box)
@@ -251,7 +273,16 @@ Run a simulation of the IdealGas model.
 
 	function demo()
 		box = idealgas()
-		#params = Dict(:temp => 100.0:1.0:1000.0,:total_volume => 0:0.1:30,:placeholder => 0:1:10)
+
+		plotkwargs = (;
+    		ac = :skyblue3,
+    		scatterkwargs = (strokewidth = 1.0,),
+			as = 8.0,
+			add_colorbar = false,
+			colormap=:greys,
+			colorrange=(0, 1),
+			heatarray=:objective,
+		)
 	
 		entropy(box) = box.entropy_change
 		mdata = [entropy]
@@ -262,11 +293,14 @@ Run a simulation of the IdealGas model.
 			model_step!,
 			mdata,
 			mlabels,
-			#params,
-			figure = (; resolution = (1300, 750)),
-			ac = :skyblue3,
-			as = 8.0
+			figure = (;
+						xlabel = "width in cm", 
+						ylabel ="height in cm", 
+						resolution = (1300, 750)
+					),
+			plotkwargs...
 		)
+
 		# Figure Objekten neues Layout zuweisen durch feste Reihenfolge in figure.content[i]
 		model_plot = playground.content[1]	# Box 	
 		playground[0:2,0] = model_plot
@@ -297,7 +331,7 @@ Run a simulation of the IdealGas model.
 		volume_label = Label(gl_labels[1,0], "Volumen: " * string(round(box.total_volume, digits=2))* " m³ ; " * string(round(box.total_volume * 1000, digits=2)) * " L", fontsize=22)
 		e_internal_label = Label(gl_labels[4,0], "Eᵢ: " * string(round(box.e_internal, digits=2)) * " J", fontsize=22)
 		
-		#Custom Buttons
+		#Volume Buttons
 		increase_vol_btn = Button(vol_change_btns[0,1:2], label = "Increase\nVolumen")# = print("increase"))#increase_vol_const())
 		pause_vol_btn = Button(vol_change_btns[0,3], label = "Pause")
 		decrease_vol_btn = Button(vol_change_btns[0,4:5], label = "Decrease\nVolumen")# = print("decrease"))#decrease_vol_const())
@@ -315,7 +349,6 @@ Run a simulation of the IdealGas model.
 		on(decrease_vol_btn.clicks) do _
 			println("decrease_vol_btn")
 		end
-
 
 		# Custom Slider
 		# Allows to set the value of the slider
