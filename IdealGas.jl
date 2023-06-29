@@ -257,8 +257,6 @@ function model_step!(model::ABM)
 	end
 
 	model.step += 1.0
-
-
 end
 
 #----------------------------------------------------------------------------------------
@@ -268,9 +266,6 @@ end
 
 Run a simulation of the IdealGas model.
 """
-
-
-
 	function demo()
 		box = idealgas()
 
@@ -488,6 +483,4 @@ Run a simulation of the IdealGas model.
 	function decrease_vol_const(i::Int = 1)
 		print("decrease_vol_const") #* i)
 	end 
-	
-
 end	# of module IdealGas
