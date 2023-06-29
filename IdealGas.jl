@@ -30,6 +30,7 @@ end
 
 "Standard value that is definitely NOT a valid agent ID"
 const non_id = -1
+const R = 8.314 # Gaskonstante in J/(mol·K)
 
 #-----------------------------------------------------------------------------------------
 # Module methods:
@@ -42,16 +43,21 @@ Create and initialise the IdealGas model.
 function idealgas(;
 	width = 500,
 	gases = Dict("Helium" => 4.0, "Hydrogen" => 1.0, "Oxygen" => 32.0),					# Gas types
+	modes = Dict("Temperatur:Druck" => "temp-druck",
+				"Temperatur:Volumen" => "temp-vol",
+				 "Druck:Temperatur" => "druck-temp",
+				 "Druck:Volumen" => "druck-vol",
+				 "Volumen:Temperatur" => "vol-temp",
+				 "Volumen:Druck" => "vol-druck"),										# Modes of operation
+	mode = "temp-druck",
 	total_volume = 5.0,																	# Initial volume of the container
-	volume = calc_total_vol_dimension(total_volume), 									# Dimensions of the container
-	topBorder = total_volume/5.0,
+	volume = calc_total_vol_dimension(total_volume),
 	temp = 293.15,																		# Initial temperature of the gas in Kelvin
 	temp_old = 293.15,
 	pressure_bar = 1.0,																	# Initial pressure of the gas in bar
 	pressure_pa =  pressure_bar*1e5,													# Initial pressure of the gas in Pascal
 	n_mol = pressure_pa * volume[1] * volume[2] * volume[3] / (8.314*temp),				# Number of mol
 	init_n_mol = copy(n_mol), 															# Initial number of mol
-	real_n_particles = n_mol * 6.022e23/4,												# Real number of Particles in box: Reduction for simplicity
 	real_n_particles = n_mol * 6.022e23/4,												# Real number of Particles in box: Reduction for simplicity
     n_particles = real_n_particles/1e23,												# Number of Particles in simulation box
 	molare_masse = 4.0,																	# Helium Gas mass in atomic mass units
@@ -79,7 +85,6 @@ function idealgas(;
 		:n_mol		=> n_mol,
 		:volume	=> volume,
 		:temp_old	=> temp_old,
-		:pressure_bar_old	=> pressure_bar_old,
 		:init_n_mol	=> init_n_mol,
 		:gases		=> gases,
 		:molare_masse		=> molare_masse,
@@ -99,12 +104,11 @@ function idealgas(;
 
 	molare_masse_kg = box.molare_masse / 1000	# Convert g/mol to kg/mol
 	max_speed = 4400.0  # Maximum speed in m/s
-	molare_masse_kg = box.molare_masse / 1000	# Convert g/mol to kg/mol
-	max_speed = 4400.0  # Maximum speed in m/s
 	for _ in 1:n_particles
 		vel = Tuple( 2rand(2).-1)
 		vel = vel ./ norm(vel)  # ALWAYS maintain normalised state of vel!
-		speed = sqrt((3 * k * box.temp) / mass_kg)  # Initial speed based on temperature
+		# uᵣₘₛ = sqrt(3*R*T / M) M in kg/mol
+		speed = sqrt((3 * R * box.temp) / molare_masse_kg)  # Initial speed based on temperature
 		speed = TD_Physics.scale_speed(speed, max_speed)  		# Scale speed to avoid excessive velocities
 		#speed = scale_speed(speed, max_speed)  		# Scale speed to avoid excessive velocities
         add_agent!( box, vel, mass_kg, speed, radius, non_id, -Inf)
@@ -223,7 +227,6 @@ function check_particle_near_border!(me, box)
         me.vel = (me.vel[1], -me.vel[2])
         me.last_bounce = box.properties[:step]
     end
-
 end
 
 #-----------------------------------------------------------------------------------------
@@ -241,6 +244,41 @@ function button_increase_volume!(me, box)
 			me.speed = me.speed/2 # Anahme: die Hälfte der Energie wird abgegeben 
 	end 
 	
+end
+
+function button_reduce_volume!(me, box)
+    x, y = me.pos
+
+    # Überprüfen, ob y > 500 und falls ja, setzen Sie y auf 500 und invertieren Sie die y-Geschwindigkeit
+	if box.cylinder_pos < 250 
+    	#println("zylinder ist voll ausgefahren")
+		box.reduce_volume_merker = box.cylinder_pos # neue Grenze
+	else
+		
+		#println(box.cylinder_position)
+
+     if x > box.cylinder_pos
+        if box.properties[:step] - me.last_bounce < 3 # wenn der letzte Treffer noch nicht lange her war 
+            me.speed = me.speed +1
+			me.vel = (me.vel[1] - 0.5 , me.vel[2]) # x-Komponente wird durch Aufprall mit Wand verstärkt 
+			me.vel = me.vel ./ norm(me.vel) 
+			println("nächste Erhöhung ")
+		 	println(me.speed)
+			println(me.id)
+
+        end
+        if box.properties[:step] - me.last_bounce > 3 # wenn der letzte Treffer schon länger her war 
+		 me.vel = (-me.vel[1], me.vel[2]) # change direction
+		 me.vel = (me.vel[1] - 0.5 , me.vel[2]) # x-richtung erhöhen 
+		 me.vel = me.vel ./ norm(me.vel) # Einheitsvektor erstellen 
+         me.speed = me.speed + 1
+		 println("Erhöhung ")
+		 println(me.speed)
+         me.last_bounce = box.properties[:step]
+        end
+     end
+    end
+
 end
 
 
@@ -337,7 +375,30 @@ Run a simulation of the IdealGas model.
 		playground[0:1,2][1,0:1] = entropy_plot
 		# Sliders
 		playground[2,1] = playground.content[2]
-		playground[2,2] = playground.content[7]
+		#playground[2,2] = playground.content[7]
+		slider_space = playground[2,2] = GridLayout()
+
+		# Buttons to change volume 
+		vol_change_btns = playground[1,1] = GridLayout()
+
+		#Custom Buttons
+		increase_vol_btn = Button(vol_change_btns[0,1:2], label = "Increase\nVolumen")# = print("increase"))#increase_vol_const())
+		pause_vol_btn = Button(vol_change_btns[0,3], label = "Pause")
+		decrease_vol_btn = Button(vol_change_btns[0,4:5], label = "Decrease\nVolumen")# = print("decrease"))#decrease_vol_const())
+
+		#TODO: Hier volumen change funktionen aufrufen
+		on(increase_vol_btn.clicks) do _
+			box.cylinder_command = 1
+		end  
+
+		on(pause_vol_btn.clicks) do _
+			box.cylinder_command = 0
+		end 
+
+		on(decrease_vol_btn.clicks) do _
+			box.cylinder_command = 2
+		end
+
 		# Buttons
 		gl_buttons = playground[3,1] = GridLayout()
 		gl_buttons[0,2] = playground.content[3]
@@ -357,24 +418,6 @@ Run a simulation of the IdealGas model.
 		volume_label = Label(gl_labels[1,0], "Volumen: " * string(round(box.total_volume, digits=2))* " m³ ; " * string(round(box.total_volume * 1000, digits=2)) * " L", fontsize=22)
 		e_internal_label = Label(gl_labels[4,0], "Eᵢ: " * string(round(box.e_internal, digits=2)) * " J", fontsize=22)
 
-		#Custom Buttons
-		increase_vol_btn = Button(vol_change_btns[0,1:2], label = "Increase\nVolumen")# = print("increase"))#increase_vol_const())
-		pause_vol_btn = Button(vol_change_btns[0,3], label = "Pause")
-		decrease_vol_btn = Button(vol_change_btns[0,4:5], label = "Decrease\nVolumen")# = print("decrease"))#decrease_vol_const())
-
-	
-		#TODO: Hier volumen change funktionen aufrufen
-		on(increase_vol_btn.clicks) do _
-			box.cylinder_command = 1
-		end  
-
-		on(pause_vol_btn.clicks) do _
-			box.cylinder_command = 0
-		end 
-
-		on(decrease_vol_btn.clicks) do _
-			box.cylinder_command = 2
-		end
 
 
 		# Custom Slider
@@ -429,7 +472,7 @@ Run a simulation of the IdealGas model.
 			end
 			
 			if box.mode == "temp-druck"
-				pressure = calc_pressure(box)
+				pressure = TD_Physics.calc_pressure(box)
 				pressure_slider_pa_value.text[] = string(round(pressure, digits=0)) * " Pa"
 				box.pressure_pa = pressure
 				set_close_to!(pressure_slider_pa, pressure)
@@ -508,4 +551,5 @@ Run a simulation of the IdealGas model.
 
 		playground
 	end
+
 end	# of module IdealGas
