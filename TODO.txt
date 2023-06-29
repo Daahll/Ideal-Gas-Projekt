@@ -1,64 +1,12 @@
-TODO:
-ideen für später:
-- 3 Dimensionale Darstellung
-
-initiale Position der Teilchen nach Volumenänderung
-- Teilchen in der Mitte des Volumens platzieren
-- relative Position berechnen
-
-p(Druck):
-
-V(Volumen):
-- Arbeit zum System hinzufügen
-T(Temperatur):
-- Temperaturänderung in Teile aufteilen, um die Temperaturänderung dynamisch zu halten
-E(innere energie des gases):
-    E =f/2 * N kB * T
-    =⇒ dE = CV dT
-    f/2 * N * kB = CV
-
-S(Entropie):
-    dS = δQ/T
-- Entropie in einem Graphen über die Zeit darstellen
-- Entropieänderung darstellen
-- beliebien Entropie startpunkt wählen
-
-
-Diagramme:
-Druck/Volumen
-Temperatur/Entropie
-
-Eigenschaften vorhanden:
-partikemasse (Art des Gases)
-partikelgröße (Art des Gases)
-anzahl der teilchen
-initial speed
-Volumen
-
-
 Formeln:
 https://uni-tuebingen.de/fileadmin/Uni_Tuebingen/Fakultaeten/MathePhysik/Institute/ITP/Braeuer/Vorles/2011_WS_Phys_1_Ueb/TD_R_Honneger.pdf
 
-ideales Gas:
-pV/T= N*kB
 
-Fragen an Palfreyman:
-- Absolute Änderung der Entropie oder relative Änderung der Entropie?
-
-- Muss die Anzeige von Variablen wie z.B Volumen exact dem realen Wert entsprechen, oder sollte man die Nutzerfreundlichkeit erhöhen und die Werte runden?
-- Welche Gasarten sollen simuliert werden ?
-- in welchem Maßstab soll die Simulation stattfinden ? (50 Teilchen oder 500.000 Teilchen)
-    - Darstellung muss jenachdem angepasst werden
-
-
-
-- Größe 200 L Volumen
-
-TODO 1:
-Anzahl der Partikel, auf basis der "realen" Partikelanzahl der Berechnungen, für die Darstellung kleiner skalieren
-
-___________________
+_________________________________________________
 Francisco & Felix: 20.6
     - Volumen von obenverändern
     - Abstoßen vom Rand
     - Zweites Module für ThermoDynamics.jl
+
+_________________________________________________
+
