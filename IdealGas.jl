@@ -44,16 +44,17 @@ function idealgas(;
 	width = 500,
 	gases = Dict("Helium" => 4.0, "Hydrogen" => 1.0, "Oxygen" => 32.0),					# Gas types
 	modes = Dict("Temperatur:Druck" => "temp-druck",
-				"Temperatur:Volumen" => "temp-vol",
-				 "Druck:Temperatur" => "druck-temp",
-				 "Druck:Volumen" => "druck-vol",
-				 "Volumen:Temperatur" => "vol-temp",
-				 "Volumen:Druck" => "vol-druck",										
-				"Mol : Temperatur" => "mol-temp",
+				#"Temperatur:Volumen" => "temp-vol",
+				 #"Druck:Temperatur" => "druck-temp",
+				 #"Druck:Volumen" => "druck-vol",
+				 #"Volumen:Temperatur" => "vol-temp",
+				 #"Volumen:Druck" => "vol-druck",										
+				#"Mol : Temperatur" => "mol-temp",
 				"Mol : Druck" => "mol-druck",
 				),										# Modes of operation
 	mode = "temp-druck",
-	total_volume = 0.2,																	# Initial volume of the container
+	total_volume = 0.2,	
+	start_volume = copy(total_volume),																# Initial volume of the container
 	volume = calc_total_vol_dimension(total_volume),
 	temp = 293.15,																		# Initial temperature of the gas in Kelvin
 	temp_old = 293.15,
@@ -61,8 +62,8 @@ function idealgas(;
 	pressure_pa =  pressure_bar*1e5,													# Initial pressure of the gas in Pascal
 	n_mol = pressure_pa * total_volume / (8.314*temp),				# Number of mol
 	init_n_mol = copy(n_mol), 															# Initial number of mol
-	real_n_particles = n_mol * 6.022e23/4,												# Real number of Particles in model: Reduction for simplicity
-    	n_particles = real_n_particles/1e23,												# Number of Particles in simulation model
+	real_n_particles = n_mol * 6.022e23,												# Real number of Particles in model: Reduction for simplicity
+    n_particles = real_n_particles/1e23,												# Number of Particles in simulation model
 	n_particles_old 		= copy(n_particles),
 	molar_mass 				= 4.0,																# Helium Gas mass in atomic mass units
 	mass_kg 				= molar_mass * 1.66053906660e-27,									# Convert atomic/molecular mass to kg
@@ -106,6 +107,8 @@ function idealgas(;
 		:heatmap 			=> ones(width, width),
 		:radius				=> radius,
 		:max_speed			=> max_speed,
+		:width				=> width,
+		:start_volume		=> start_volume,
 	)
 
 
@@ -308,6 +311,8 @@ function model_step!(model::ABM)
 
 	model.step += 1.0
 
+
+
 	if model.cylinder_command == 1 && model.cylinder_pos > 250 # Zylinder soll ausgefahren werden
 		model.cylinder_pos = model.cylinder_pos - 0.3
 		#println("volumen wird veringert")
@@ -321,6 +326,9 @@ function model_step!(model::ABM)
 			change_heatmap!(model)
 		end
 	end 
+	model.total_volume = (model.cylinder_pos / model.width) * model.start_volume
+	model.pressure_pa = TD_Physics.calc_pressure(model)
+	model.pressure_bar = model.pressure_pa / 1e5
 end
 
 #----------------------------------------------------------------------------------------
@@ -361,7 +369,7 @@ Run a simulation of the IdealGas model.
 		function create_custom_slider(slider_space, row_num, labeltext, fontsize, range, unit, startvalue)
 			label = Label(slider_space[row_num, 0], labeltext, fontsize=fontsize)
 			slider = Slider(slider_space[row_num, 1], range=range, startvalue=startvalue)
-			slider_value = Label(slider_space[row_num, 2], string(slider.value[]) * " " * unit)
+			slider_value = Label(slider_space[row_num, 2], string(round(slider.value[], digits=2)) * " " * unit)
 			return label, slider, slider_value
 		end
 
@@ -375,7 +383,7 @@ Run a simulation of the IdealGas model.
 		plotkwargs = (;
     		ac = :skyblue3,
     		scatterkwargs = (strokewidth = 1.0,),
-			as = 8.0,
+			as = 30.0,
 			add_colorbar = false,
 			colormap=:greys,
 			colorrange=(0, 1),
@@ -443,8 +451,8 @@ Run a simulation of the IdealGas model.
 		# Labels
 		#pressure_label = Label(gl_labels[2,0], "Druck: " * string(round(model.pressure_bar, digits=2))* " Bar", fontsize=22)
 		mass_label = Label(gl_labels[0,0], "Masse: " * string(model.mass_gas)* " g", fontsize=22)
-		#volume_label = Label(gl_labels[1,0], "Volumen: " * string(round(model.total_volume, digits=2))* " m³ ; " * string(round(model.total_volume * 1000, digits=2)) * " L", fontsize=22)
-		e_internal_label = Label(gl_labels[1,0], "Eᵢ: " * string(round(model.e_internal, digits=2)) * " J", fontsize=22)
+		volume_label = Label(gl_labels[1,0], "Volumen: " * string(round(model.total_volume, digits=4))* " m³ ; " * string(round(model.total_volume * 1000, digits=4)) * " L", fontsize=22)
+		e_internal_label = Label(gl_labels[2,0], "Eᵢ: " * string(round(model.e_internal, digits=2)) * " J", fontsize=22)
 
 
 		# multipliers and quotients to set min, max and step of sliders based on current values
@@ -455,8 +463,8 @@ Run a simulation of the IdealGas model.
 		temp_slider_label, temp_slider, temp_slider_value = create_custom_slider(slider_space, 0, "Temperatur: ", 16, model.temp*slider_multiplier_min:model.temp/slider_step_quotient:model.temp*slider_multiplier_max, "K", model.temp)
 		pressure_slider_bar_label, pressure_slider_bar, pressure_slider_bar_value = create_custom_slider(slider_space, 1, "Druck[Bar]: ", 16, model.pressure_bar*slider_multiplier_min:model.pressure_bar/slider_step_quotient:model.pressure_bar*slider_multiplier_max, "Bar", model.pressure_bar)
 		pressure_slider_pa_label, pressure_slider_pa, pressure_slider_pa_value = create_custom_slider(slider_space, 2, "Druck[Pa]: ", 16, model.pressure_pa*slider_multiplier_min:model.pressure_pa/slider_step_quotient:model.pressure_pa*slider_multiplier_max, "Pa", model.pressure_pa)
-		volume_slider_label, volume_slider, volume_slider_value = create_custom_slider(slider_space, 3, "Volumen: ", 16, model.total_volume*slider_multiplier_min:model.total_volume/slider_step_quotient:model.total_volume*slider_multiplier_max, "m³", model.total_volume)
-		n_mol_slider_label, n_mol_slider, n_mol_slider_value = create_custom_slider(slider_space, 4, "Stoffmenge: ", 16, model.n_mol*slider_multiplier_min:model.n_mol/slider_step_quotient:model.n_mol*slider_multiplier_max, "mol", model.n_mol)
+		#volume_slider_label, volume_slider, volume_slider_value = create_custom_slider(slider_space, 3, "Volumen: ", 16, model.total_volume*slider_multiplier_min:model.total_volume/slider_step_quotient:model.total_volume*slider_multiplier_max, "m³", model.total_volume)
+		n_mol_slider_label, n_mol_slider, n_mol_slider_value = create_custom_slider(slider_space, 3, "Stoffmenge: ", 16, model.n_mol*slider_multiplier_min:model.n_mol/slider_step_quotient:model.n_mol*slider_multiplier_max, "mol", model.n_mol)
 
 		is_updating = false
 
@@ -468,14 +476,18 @@ Run a simulation of the IdealGas model.
 			else
 				mass_label.text[] = string("Masse: ", string(model.mass_gas), " g")
 			end
-			#volume_label.text[] = string("Volumen: " * string(round(model.total_volume, digits=2))* " m³ ; " * string(round(model.total_volume * 1000, digits=2)) * " L")
+			volume_label.text[] = string("Volumen: " * string(round(model.total_volume, digits=4))* " m³ ; " * string(round(model.total_volume * 1000, digits=4)) * " L")
+
+			set_slider(model.pressure_pa, pressure_slider_pa, pressure_slider_pa_value, "Pa")
+			set_slider(model.pressure_bar, pressure_slider_bar, pressure_slider_bar_value, "Bar")
+
+
 
 		end
 
 		on(gas_dropdown.selection) do selected_gas
-			new_molarmass = model.gases[selected_gas]
-			model.molar_mass = new_molar_mass
-			model.mass_kg = new_molar_mass * 1.66054e-27
+			model.molar_mass = model.gases[selected_gas]
+			model.mass_kg = model.molar_mass * 1.66054e-27
 			model.mass_gas = round(model.n_mol * model.molar_mass, digits=3)
 			
 		end
@@ -499,8 +511,8 @@ Run a simulation of the IdealGas model.
 				set_slider(model.pressure_bar, pressure_slider_bar, pressure_slider_bar_value, "Bar")
 
 				# set the range of the sliders
-				pressure_slider_pa.range = model.pressure_pa * slider_multiplier_min:model.pressure_pa/slider_step_quotient:model.pressure_pa * slider_multiplier_max
-				pressure_slider_bar.range = model.pressure_bar * slider_multiplier_min:model.pressure_bar / slider_step_quotient:model.pressure_bar * slider_multiplier_max
+				#pressure_slider_pa.range = model.pressure_pa * slider_multiplier_min:model.pressure_pa/slider_step_quotient:model.pressure_pa * slider_multiplier_max
+				#pressure_slider_bar.range = model.pressure_bar * slider_multiplier_min:model.pressure_bar / slider_step_quotient:model.pressure_bar * slider_multiplier_max
 
 			# If the mode is "temp-vol" the volume is calculated
 			elseif model.mode == "temp-vol"
@@ -509,7 +521,7 @@ Run a simulation of the IdealGas model.
 				model.volume = calc_total_vol_dimension(model.total_volume)
 
 				# set the range of the sliders
-				volume_slider.range = model.total_volume * slider_multiplier_min:model.total_volume/slider_step_quotient:model.total_volume * slider_multiplier_max
+				#volume_slider.range = model.total_volume * slider_multiplier_min:model.total_volume/slider_step_quotient:model.total_volume * slider_multiplier_max
 			end
 		end
 
@@ -539,7 +551,7 @@ Run a simulation of the IdealGas model.
 					set_slider(model.temp, temp_slider, temp_slider_value, "K")
 
 					# set the range of the sliders
-					temp_slider.range = model.temp * slider_multiplier_min:model.temp/slider_step_quotient:model.temp * slider_multiplier_max
+					#temp_slider.range = model.temp * slider_multiplier_min:model.temp/slider_step_quotient:model.temp * slider_multiplier_max
 
 				end
 			end
@@ -572,13 +584,13 @@ Run a simulation of the IdealGas model.
 					set_slider(model.temp, temp_slider, temp_slider_value, "K")
 
 					# set the range of the sliders
-					temp_slider.range = model.temp * slider_multiplier_min:model.temp/slider_step_quotient:model.temp * slider_multiplier_max
+					#temp_slider.range = model.temp * slider_multiplier_min:model.temp/slider_step_quotient:model.temp * slider_multiplier_max
 
 				end
 			end
 			is_updating = false
 		end
-
+		"""
 		# on change of volume slider
 		on(volume_slider.value) do volume
 			if model.mode == "vol-druck" || model.mode == "vol-temp"
@@ -608,13 +620,13 @@ Run a simulation of the IdealGas model.
 				end
 			end
 		end
-
+		"""
 		# on change of n_mol slider
 		on(n_mol_slider.value) do n_mol
 			if model.mode == "mol-temp" || model.mode == "mol-druck"
 				model.n_mol = n_mol[]
 				n_mol_slider_value.text[] = string(round(n_mol[], digits=2)) * " mol"
-				model.n_particles = model.n_mol * 6.022e23 / 1e22 / 8
+				model.n_particles = model.n_mol * 6.022e23 / 1e23
 				add_or_remove_agents!(model)				
 
 				# If the mode is "n_mol-temp" the temperature is calculated
@@ -623,7 +635,7 @@ Run a simulation of the IdealGas model.
 					set_slider(model.temp, temp_slider, temp_slider_value, "K")
 
 					# set the range of the sliders
-					temp_slider.range = model.temp * slider_multiplier_min:model.temp/slider_step_quotient:model.temp * slider_multiplier_max
+					#temp_slider.range = model.temp * slider_multiplier_min:model.temp/slider_step_quotient:model.temp * slider_multiplier_max
 
 
 				# If the mode is "n_mol-druck" the pressure is calculated
@@ -634,8 +646,8 @@ Run a simulation of the IdealGas model.
 					set_slider(model.pressure_bar, pressure_slider_bar, pressure_slider_bar_value, "Bar")
 
 					# set the range of the sliders
-					pressure_slider_pa.range = model.pressure_pa * slider_multiplier_min:model.pressure_pa/slider_step_quotient:model.pressure_pa * slider_multiplier_max
-					pressure_slider_bar.range = model.pressure_bar * slider_multiplier_min:model.pressure_bar / slider_step_quotient:model.pressure_bar * slider_multiplier_max
+					#pressure_slider_pa.range = model.pressure_pa * slider_multiplier_min:model.pressure_pa/slider_step_quotient:model.pressure_pa * slider_multiplier_max
+					#pressure_slider_bar.range = model.pressure_bar * slider_multiplier_min:model.pressure_bar / slider_step_quotient:model.pressure_bar * slider_multiplier_max
 				end
 			end
 		end
