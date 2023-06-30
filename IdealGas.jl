@@ -103,7 +103,7 @@ function idealgas(;
 		:reduce_volume_merker => 500,
 		:modes				=> modes,
 		:mode				=> mode,
-		:objective 			=> create_heatmap(width),
+		:heatmap 			=> ones(width, width),
 		:radius				=> radius,
 		:max_speed			=> max_speed,
 	)
@@ -132,23 +132,33 @@ end
 
 #-----------------------------------------------------------------------------------------
 """
-	create_heatmap(width)
+    change_heatmap!(model::ABM)
 
-		Creates the underlying heatmap as a representation of the gas-tank.
+		Changes the underlying heatmap as a representation of the chaning gas-tank.
 """
-	function create_heatmap(width::Int)
-		outer_rim = 1
-		heatarray = zeros(width, width)  # Initialize the heatarray with zeros
-	
-		map((i) -> begin
-			x = i[1]
-			y = i[2]
-			if (x >= 1 && x <= outer_rim) || (y >= 1 && y <= outer_rim) || (x <= width && x >= width - outer_rim) || (y <= width && y >= width - outer_rim)
-				heatarray[x, y] = 1.0
+	function change_heatmap!(model::ABM)
+		for i in CartesianIndices(model.heatmap)
+			if i[1] >= round(model.cylinder_pos)
+				model.heatmap[i] = 0.0
 			end
-		end, CartesianIndices(heatarray))
-	
-		return heatarray
+			if i[1] <= round(model.cylinder_pos)
+				model.heatmap[i] = 1.0
+			end
+		end
+
+	#	println(model.heatmap)
+	#	outer_rim = 1
+	#	heatarray = zeros(width, width)  # Initialize the heatarray with zeros
+	#
+	#	map((i) -> begin
+	#		x = i[1]
+	#		y = i[2]
+	#		if (x >= 1 && x <= outer_rim) || (y >= 1 && y <= outer_rim) || (x <= width && x >= width - outer_rim) || (y <= width && y >= width - outer_rim)
+	#			heatarray[x, y] = 1.0
+	#		end
+	#	end, CartesianIndices(heatarray))
+	#
+	#	return heatarray
 	end
 #-----------------------------------------------------------------------------------------
 """
@@ -185,7 +195,6 @@ function agent_step!(me::Particle, model::ABM)
 	check_particle_near_border!(me, model)
 
 	# Zylinder Steuerug 
-
 	if model.cylinder_command == 1
 		button_reduce_volume!(me, model)
 		#println("zylinder fährt ein")
@@ -195,7 +204,6 @@ function agent_step!(me::Particle, model::ABM)
 		button_increase_volume!(me,model)
 		model.reduce_volume_merker = model.space.extent[1] # solange Funtkion aktiv wird die Grenze bei check_particle_near_border aufgehoben 
 	end 
-	
 	move_agent!(me, model, me.speed)
 end
 #----------------------------------------------------------------------------------------
@@ -227,7 +235,7 @@ function button_increase_volume!(me, model)
 	println(model.cylinder_pos)
 
 	if model.cylinder_pos > 499.5 
-    	println("zylinder ist in Ursprunngsposition")
+    	#println("zylinder ist in Ursprunngsposition")
 	
 	elseif x > model.cylinder_pos 
 			me.vel = (-me.vel[1], me.vel[2])	
@@ -300,14 +308,19 @@ function model_step!(model::ABM)
 
 	model.step += 1.0
 
-
 	if model.cylinder_command == 1 && model.cylinder_pos > 250 # Zylinder soll ausgefahren werden
 		model.cylinder_pos = model.cylinder_pos - 0.3
 		#println("volumen wird veringert")
+		if  mod(model.step, 3) == 0
+			change_heatmap!(model)
+		end
 	elseif model.cylinder_command == 2 && model.cylinder_pos < 500 # Zylinder soll zurück gefahren werden
 		model.cylinder_pos = model.cylinder_pos + 0.3 
 		#println("volume wird erhöht")
-	end
+		if  mod(model.step, 3) == 0
+			change_heatmap!(model)
+		end
+	end 
 end
 
 #----------------------------------------------------------------------------------------
@@ -366,7 +379,7 @@ Run a simulation of the IdealGas model.
 			add_colorbar = false,
 			colormap=:greys,
 			colorrange=(0, 1),
-			heatarray=:objective,
+			heatarray=:heatmap,
 		)
 	
 		entropy(model) = model.entropy_change
