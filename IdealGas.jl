@@ -44,36 +44,36 @@ function idealgas(;
 	width = 500,
 	gases = Dict("Helium" => 4.0, "Hydrogen" => 1.0, "Oxygen" => 32.0),					# Gas types
 	modes = Dict("Temperatur:Druck" => "temp-druck",
-				 "Temperatur:Volumen" => "temp-vol",
+				"Temperatur:Volumen" => "temp-vol",
 				 "Druck:Temperatur" => "druck-temp",
 				 "Druck:Volumen" => "druck-vol",
 				 "Volumen:Temperatur" => "vol-temp",
-				 "Volumen:Druck" => "vol-druck",									
-				 "Mol : Temperatur" => "mol-temp",
-				 "Mol : Druck" => "mol-druck",
+				 "Volumen:Druck" => "vol-druck",										
+				"Mol : Temperatur" => "mol-temp",
+				"Mol : Druck" => "mol-druck",
 				),										# Modes of operation
 	mode = "temp-druck",
-	total_volume = 0.2,																	# Initial volume of the container
-	volume = calc_total_vol_dimension(total_volume),
-	temp = 293.15,																		# Initial temperature of the gas in Kelvin
-	temp_old = 293.15,
-	pressure_bar = 1.0,																	# Initial pressure of the gas in bar
-	pressure_pa =  pressure_bar*1e5,													# Initial pressure of the gas in Pascal
-	n_mol = pressure_pa * total_volume / (8.314*temp),				                    # Number of mol
-	init_n_mol = copy(n_mol), 															# Initial number of mol
-	real_n_particles = n_mol * 6.022e23/4,												# Real number of Particles in model: Reduction for simplicity
-    n_particles = real_n_particles/1e23,												# Number of Particles in simulation model
+	total_volume 			= 0.2,																	# Initial volume of the container
+	volume 					= calc_total_vol_dimension(total_volume),
+	temp 					= 293.15,																		# Initial temperature of the gas in Kelvin
+	temp_old 				= 293.15,
+	pressure_bar 			= 1.0,																	# Initial pressure of the gas in bar
+	pressure_pa 			=  pressure_bar*1e5,													# Initial pressure of the gas in Pascal
+	n_mol 					= pressure_pa * total_volume / (8.314*temp),				# Number of mol
+	init_n_mol 				= copy(n_mol), 															# Initial number of mol
+	real_n_particles 		= n_mol * 6.022e23/4,												# Real number of Particles in model: Reduction for simplicity
+    n_particles 			= real_n_particles/1e23,												# Number of Particles in simulation model
 	n_particles_old 		= copy(n_particles),
 	molar_mass 				= 4.0,																# Helium Gas mass in atomic mass units
 	mass_kg 				= molar_mass * 1.66053906660e-27,									# Convert atomic/molecular mass to kg
 	mass_gas 				= round(n_mol * molar_mass, digits=3),								# Mass of gas
 	radius 					= 8.0,																			# Radius of Particles in the model
-	e_internal = 3/2 * n_mol * 8.314 * temp,											# Inner energy of the gas
-	entropy_change = 0.0,
+	e_internal 				= 3/2 * n_mol * 8.314 * temp,											# Inner energy of the gas
+	entropy_change 			= 0.0,
 	old_scaled_speed 		= 0.0,																# Scaled speed of the previous step
 	step 					= 0,																# Step counter
 	max_speed 				= 8000.0,																# Change in entropy of the gas
-	extent = (width,width),																	# Extent of Particles space
+	extent 					= (width,width),																	# Extent of Particles space
 )
     space = ContinuousSpace(extent; spacing = 2.5)
 
@@ -83,27 +83,27 @@ function idealgas(;
 		:temp_old			=> temp_old,
 		:total_volume		=> total_volume,
 		:e_internal			=> e_internal,
-		:old_scaled_speed => old_scaled_speed,
+		:old_scaled_speed 	=> old_scaled_speed,
 		:entropy_change 	=> entropy_change,
 		:pressure_pa		=> pressure_pa,
 		:pressure_bar		=> pressure_bar,
 		:real_n_particles	=> real_n_particles,
-		:n_mol		=> n_mol,
+		:n_mol				=> n_mol,
 		:n_particles_old	=> n_particles_old,
-		:volume	=> volume,
+		:volume				=> volume,
 		#:temp_old	=> temp_old,
-		:init_n_mol	=> init_n_mol,
-		:gases		=> gases,
-		:molar_mass		=> molar_mass,
-		:mass_kg		=> mass_kg,
-		:mass_gas	=> mass_gas,
-		:step => 0,
-		:cylinder_command => 0, 
-		:cylinder_pos => 500,
+		:init_n_mol			=> init_n_mol,
+		:gases				=> gases,
+		:molar_mass			=> molar_mass,
+		:mass_kg			=> mass_kg,
+		:mass_gas			=> mass_gas,
+		:step 				=> 0,
+		:cylinder_command 	=> 0, 
+		:cylinder_pos 		=> 500,
 		:reduce_volume_merker => 500,
 		:modes				=> modes,
 		:mode				=> mode,
-		:objective 			=> create_heatmap(width),
+		:objective 			=> ones(width),
 		:radius				=> radius,
 		:max_speed			=> max_speed,
 	)
@@ -395,9 +395,9 @@ Run a simulation of the IdealGas model.
 
 		# Buttons to change volume 
 		vol_change_btns = playground[1,1] = GridLayout()
-		increase_vol_btn = Button(vol_change_btns[0,1:2], label = "Increase\nVolumen")# = print("increase"))#increase_vol_const())
+		increase_vol_btn = Button(vol_change_btns[0,1:2], label = "Decrease\nVolumen")# = print("increase"))#increase_vol_const())
 		pause_vol_btn = Button(vol_change_btns[0,3], label = "Pause")
-		decrease_vol_btn = Button(vol_change_btns[0,4:5], label = "Decrease\nVolumen")# = print("decrease"))#decrease_vol_const())
+		decrease_vol_btn = Button(vol_change_btns[0,4:5], label = "Increase\nVolumen")# = print("decrease"))#decrease_vol_const())
 
 		on(increase_vol_btn.clicks) do _
 			model.cylinder_command = 1
@@ -575,7 +575,7 @@ Run a simulation of the IdealGas model.
 
 				# If the mode is "vol-druck" the pressure is calculated
 				if model.mode == "vol-druck"
-					model.pressure_pa = calc_pressure(model)
+					model.pressure_pa = TD_Physics.calc_pressure(model)
 					model.pressure_bar = model.pressure_pa / 1e5
 					set_slider(pressure, pressure_slider_pa, pressure_slider_pa_value, "Pa")
 					set_slider(pressure / 1e5, pressure_slider_bar, pressure_slider_bar_value, "Bar")
@@ -615,7 +615,7 @@ Run a simulation of the IdealGas model.
 
 				# If the mode is "n_mol-druck" the pressure is calculated
 				elseif model.mode == "mol-druck"
-					model.pressure_pa = calc_pressure(model)
+					model.pressure_pa = TD_Physics.calc_pressure(model)
 					model.pressure_bar = model.pressure_pa / 1e5
 					set_slider(model.pressure_pa, pressure_slider_pa, pressure_slider_pa_value, "Pa")
 					set_slider(model.pressure_bar, pressure_slider_bar, pressure_slider_bar_value, "Bar")
