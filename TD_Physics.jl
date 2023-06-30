@@ -26,7 +26,7 @@ function momentum(particle)
 end
 #-----------------------------------------------------------------------------------------
 """
-	scale_speed(agent, max_speed)
+	scale_speed(speed, max_speed)
 
 Scales a speed value to the interval [0,1] based on the provided max_speed.
 """
@@ -153,7 +153,7 @@ Return the scaled root mean squared speed of the particles based on temperature.
 		max_speed = 3000 										# Maximum speed in m/s; Cap the visual speed at about T=1450 K, V=250L, p=4 bar
 		molare_masse_kg = model.molar_mass / 1000				# Convert g/mol to kg/mol
 		speed = sqrt((3 * R * model.temp) / molare_masse_kg)  	# Root mean squared speed based on temperature uᵣₘₛ = sqrt(3*R*T / M)
-		scaled_speed = scale_speed(speed, max_speed)  			# Scale speed to avoid excessive velocities
+		scaled_speed = TD_Physics.scale_speed(speed, max_speed)  			# Scale speed to avoid excessive velocities
 		return scaled_speed
 	end
 
