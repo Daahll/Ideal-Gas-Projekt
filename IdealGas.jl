@@ -148,20 +148,6 @@ end
 				model.heatmap[i] = 1.0 # Set the value to 0
 			end
 		end
-
-	#	println(model.heatmap)
-	#	outer_rim = 1
-	#	heatarray = zeros(width, width)  # Initialize the heatarray with zeros
-	#
-	#	map((i) -> begin
-	#		x = i[1]
-	#		y = i[2]
-	#		if (x >= 1 && x <= outer_rim) || (y >= 1 && y <= outer_rim) || (x <= width && x >= width - outer_rim) || (y <= width && y >= width - outer_rim)
-	#			heatarray[x, y] = 1.0
-	#		end
-	#	end, CartesianIndices(heatarray))
-	#
-	#	return heatarray
 	end
 #-----------------------------------------------------------------------------------------
 """
@@ -172,7 +158,7 @@ while conserving momentum and kinetic energy.
 """
 function agent_step!(me::Particle, model::ABM)
 	her = random_nearby_agent( me, model, 2*me.radius)	# Grab nearby particle
-	if her !== nothing && her.id != me.prev_partner
+	if her !== nothing && her.id < me.id && her.id != me.prev_partner
         # New collision partner has not already been handled and is not my previous partner:
         me.prev_partner = her.id           # Update previous partners to avoid repetitive juddering collisions.
         her.prev_partner = me.id           # ditto for the other agent.
@@ -187,7 +173,7 @@ function agent_step!(me::Particle, model::ABM)
         impulse = 2 * me.mass * her.mass / (me.mass + her.mass) * velocity_dot ./ distance_sq .* rel_pos
 
         # Update velocities according to the impulse
-		me.vel = (me.vel[1] - (impulse ./ me.mass)[1], me.vel[2] - (impulse ./ me.mass)[2]) #
+		me.vel = (me.vel[1] - (impulse ./ me.mass)[1], me.vel[2] - (impulse ./ me.mass)[2])
 		her.vel = (her.vel[1] + (impulse ./ her.mass)[1], her.vel[2] + (impulse ./ her.mass)[2])
 
         # Update speeds based on new velocities
@@ -197,35 +183,47 @@ function agent_step!(me::Particle, model::ABM)
 
 	check_particle_near_border!(me, model)
 
-	# Zylinder control 
+	# cylinder control 
 	if model.cylinder_command == 1
 		button_reduce_volume!(me, model)
 	elseif model.cylinder_command == 0
 		model.reduce_volume_merker = model.cylinder_pos
+		# the new limit is set in the function check_particle_near_border
 	elseif model.cylinder_command == 2
 		button_increase_volume!(me,model)
-		model.reduce_volume_merker = model.space.extent[1] # as long as the function is active, the border of check_particle_near_border! is deacrivated
+		model.reduce_volume_merker = model.space.extent[1] 
+		# as long as the function is active, the limit at check_particle_near_border is removed
 	end 
+	
+
 	move_agent!(me, model, me.speed)
 end
 #----------------------------------------------------------------------------------------
+"""
+	check_particle_near_border!(me, model)
 
+Implementation of particle collisions with edge areas: 
+A specific region was defined where particles, due to their erratic motion, 
+change direction (reflect) at the edges. To avoid continuous direction changes
+of slow particles in this edge region, a counter last_bounce was introduced. 
+This allows a renewed change of direction only after three model steps.
+"""
 function check_particle_near_border!(me, model)
-    x, y = me.pos # Get current position
+    x, y = me.pos
 
-    if x < 1.8 + me.radius/2 && model.step - me.last_bounce > 3 # Check if near left border
-        me.vel = (-me.vel[1], me.vel[2]) # Reflect x-velocity
-        me.last_bounce = model.step # Update last bounce
-    elseif x > model.reduce_volume_merker - 1.8 && model.step - me.last_bounce > 3 # Check if near right border
-        me.vel = (-me.vel[1], me.vel[2]) # Reflect x-velocity
-        me.last_bounce = model.step # Update last bounce
+    if x < 1.8 + me.radius/2 && model.step - me.last_bounce > 3
+        me.vel = (-me.vel[1], me.vel[2])
+        me.last_bounce = model.step
+    elseif x > model.reduce_volume_merker - 1.8 - me.radius/2 && model.step - me.last_bounce > 3
+        me.vel = (-me.vel[1], me.vel[2])
+        me.last_bounce = model.step
     end
-    if y < 1.8 + me.radius/2 && model.step - me.last_bounce > 3 # Check if near bottom border
-        me.vel = (me.vel[1], -me.vel[2]) # Reflect y-velocity
-        me.last_bounce = model.step # Update last bounce
-    elseif y > model.space.extent[2] - 1.8 && model.step - me.last_bounce > 3 # Check if near top border 
-        me.vel = (me.vel[1], -me.vel[2]) # Reflect y-velocity
-        me.last_bounce = model.properties[:step] # Update last bounce
+    if y < 1.8 + me.radius/2 && model.step - me.last_bounce > 3
+        me.vel = (me.vel[1], -me.vel[2])
+        me.last_bounce = model.step			
+    elseif y > model.space.extent[2] - 1.8 - me.radius/2 && model.step - me.last_bounce > 3 
+        me.vel = (me.vel[1], -me.vel[2])
+        me.last_bounce = model.properties[:step]
     end
 end
 
@@ -234,35 +232,43 @@ function button_increase_volume!(me, model)
 
 	x,y = me.pos
 
-
-	if model.cylinder_pos > 499.5 
-	
+	if model.cylinder_pos > model.space.extent[1] - 0.5 
+		# do nothing
 	elseif x > model.cylinder_pos 
 			me.vel = (-me.vel[1], me.vel[2])	
-			me.speed = me.speed/2 # Assumption: the particle loses half of its speed when hitting the piston
+			me.speed = me.speed/2 
 	end 
-	
 end
+
+"""
+	button_reduce_volume!(me, model)
+
+The x_component of the direction vector is increased on impact with the incoming cylinder.
+In addition, the velocity is also increased. The direction is only changed 
+when the particles move to the right. 
+"""
 
 function button_reduce_volume!(me, model)
     x, y = me.pos
+	x_direction, y_direction = me.vel
 
-    #  Check if y > 500 and if so set y to 500 and invert the y velocity
-	if model.cylinder_pos < 250 
-		model.reduce_volume_merker = model.cylinder_pos # new border
+	if model.cylinder_pos < model.space.extent[1]/2
+    	#println("zylinder ist voll ausgefahren")
+		model.reduce_volume_merker = model.cylinder_pos 
+		# the new limit is set in the funktion check_particle_near_border
 	else
-		
      if x > model.cylinder_pos
-        if model.properties[:step] - me.last_bounce < 3 # if the last bounce was recent
+        if x_direction <= 0 # when particle moves to the left 
             me.speed = me.speed +1
-			me.vel = (me.vel[1] - 0.5 , me.vel[2]) # x-component is increased when hitting the piston
+			me.vel = (me.vel[1] - 0.5 , me.vel[2]) 
+			# x-component is reinforced by impact with wall 
 			me.vel = me.vel ./ norm(me.vel) 
-
         end
-        if model.properties[:step] - me.last_bounce > 3 # if the last bounce was a while ago
+
+        if x_direction > 0 # when perticle moves to the right
 		 me.vel = (-me.vel[1], me.vel[2]) # change direction
-		 me.vel = (me.vel[1] - 0.5 , me.vel[2]) # increase x-component
-		 me.vel = me.vel ./ norm(me.vel) # create unit vector
+		 me.vel = (me.vel[1] - 0.5 , me.vel[2])  
+		 me.vel = me.vel ./ norm(me.vel) # Create unit vector
          me.speed = me.speed + 1
          me.last_bounce = model.properties[:step]
         end
@@ -273,6 +279,12 @@ end
 
 
 #-----------------------------------------------------------------------------------------
+"""
+	model_step!( model)
+
+	calculate the quantities, based on the chosen mode (Specifies which variables are constant)
+	calculate the quantities, based on the chosen mode (Specifies which variables are constant)
+"""
 function model_step!(model::ABM)
 	"""
 
@@ -282,46 +294,41 @@ function model_step!(model::ABM)
 
 	"""
 	
-	model.entropy_change = calc_entropy_change(model) # calculate the entropy change
-	model.e_internal = calc_internal_energy(model) # calculate the internal energy
+	model.entropy_change = calc_entropy_change(model)
+	model.e_internal = calc_internal_energy(model)
 
-	scaled_speed = calc_and_scale_speed(model) # calculate the root mean square speed and scale it for visuals
-
+	scaled_speed = calc_and_scale_speed(model)
 	# Set speed of all particles the same when approaching absolute zero (Downwards from T=60 K)
-	if scaled_speed < 1 # If the speed is below 1, set it to 1 for all particles
-		for particle in allagents(model) # for all particles in the model
-			particle.speed = scaled_speed # set the speed to the scaled value
+	if scaled_speed < 1
+		for particle in allagents(model)
+			particle.speed = scaled_speed
 		end
 	else # Else keep the difference in speed to the root mean square speed of the previous step (but scale it for visuals)
-		for particle in allagents(model) # for all particles in the model
-			particle.speed = scaled_speed + (particle.speed - model.old_scaled_speed) / (7/4) # set the speed to the scaled value
+		for particle in allagents(model)
+			particle.speed = scaled_speed + (particle.speed - model.old_scaled_speed) / (7/4)
 		end
 	end
-	model.old_scaled_speed = scaled_speed # set the old scaled speed to the current scaled speed
+	model.old_scaled_speed = scaled_speed
 
 	model.step += 1.0
 
 
 
-	if model.cylinder_command == 1 && model.cylinder_pos > 250 # expand cylinder
-		model.cylinder_pos = model.cylinder_pos - 0.3 # Change cylinder position
-		if  mod(model.step, 3) == 0 # update heatmap every 3 steps
-			change_heatmap!(model) # update heatmap
+	if model.cylinder_command == 1 && model.cylinder_pos > 250 # Zylinder soll ausgefahren werden
+		model.cylinder_pos = model.cylinder_pos - 0.5
+		if  mod(model.step, 3) == 0
+			change_heatmap!(model)
 		end
-	elseif model.cylinder_command == 2 && model.cylinder_pos < 500 # compress cylinder
-		model.cylinder_pos = model.cylinder_pos + 0.3 # Change cylinder position
-		if  mod(model.step, 3) == 0 # update heatmap every 3 steps
-			change_heatmap!(model) # update heatmap
+	elseif model.cylinder_command == 2 && model.cylinder_pos < 500 # Zylinder soll zurück gefahren werden
+		model.cylinder_pos = model.cylinder_pos + 0.5 
+		if  mod(model.step, 3) == 0
+			change_heatmap!(model)
 		end
 	end 
-	model.total_volume = (model.cylinder_pos / model.width) * model.start_volume # Volumen wird berechnet
 
-	if model.mode == "vol-temp" # If the mode is volume-temperature
-		model.temp = TD_Physics.calc_temperature(model) # Calculate the temperature
-	else
-		model.pressure_pa = TD_Physics.calc_pressure(model) # Calculate the pressure
-		model.pressure_bar = model.pressure_pa / 1e5 # Calculate the pressure in bar
-	end
+	model.total_volume = (model.cylinder_pos / model.width) * model.start_volume
+	model.pressure_pa = TD_Physics.calc_pressure(model)
+	model.pressure_bar = model.pressure_pa / 1e5
 end
 
 #----------------------------------------------------------------------------------------
@@ -371,16 +378,10 @@ Run a simulation of the IdealGas model.
 			end
 		end
 
-		function create_custom_slider(gl_sliders, row_num, labeltext, fontsize, range, unit, startvalue)
-			"""
-
-			Function to create a custom slider with a label and a value label.
-
-			"""
-
-			label = Label(gl_sliders[row_num, 0], labeltext, fontsize=fontsize) # create label
-			slider = Slider(gl_sliders[row_num, 1], range=range, startvalue=startvalue) # create slider
-			slider_value = Label(gl_sliders[row_num, 2], string(round(slider.value[], digits=2)) * " " * unit) # create value label
+		function create_custom_slider(slider_space, row_num, labeltext, fontsize, range, unit, startvalue)
+			label = Label(slider_space[row_num, 0], labeltext, fontsize=fontsize)
+			slider = Slider(slider_space[row_num, 1], range=range, startvalue=startvalue)
+			slider_value = Label(slider_space[row_num, 2], string(round(slider.value[], digits=2)) * " " * unit)
 			return label, slider, slider_value
 		end
 
