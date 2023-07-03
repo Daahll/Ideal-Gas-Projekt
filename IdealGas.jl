@@ -145,20 +145,6 @@ end
 				model.heatmap[i] = 1.0
 			end
 		end
-
-	#	println(model.heatmap)
-	#	outer_rim = 1
-	#	heatarray = zeros(width, width)  # Initialize the heatarray with zeros
-	#
-	#	map((i) -> begin
-	#		x = i[1]
-	#		y = i[2]
-	#		if (x >= 1 && x <= outer_rim) || (y >= 1 && y <= outer_rim) || (x <= width && x >= width - outer_rim) || (y <= width && y >= width - outer_rim)
-	#			heatarray[x, y] = 1.0
-	#		end
-	#	end, CartesianIndices(heatarray))
-	#
-	#	return heatarray
 	end
 #-----------------------------------------------------------------------------------------
 """
@@ -391,7 +377,7 @@ Run a simulation of the IdealGas model.
 			model_step!,
 			mdata,
 			mlabels,
-			figure = (; resolution = (width*0.75, height*0.75)),
+			figure = (; resolution = (width*0.75, height*0.75), title ="Ideal Gas Simulation"),
 			ac =:skyblue3,
 			plotkwargs...
 		)
