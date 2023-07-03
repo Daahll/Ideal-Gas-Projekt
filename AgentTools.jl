@@ -196,7 +196,7 @@ function abmplayground(model, initialiser; kwargs...)
 	end
 	@assert !isnothing(reset_btn) "Couldn't find the 'Reset-model-button'!"
 
-
+	"""
 	on(reset_btn.clicks) do _
 		# Retrieve all keyword arguments from the initialiser function
 		# (https://discourse.julialang.org/t/get-the-argument-names-of-an-function/32902/4):
@@ -210,6 +210,7 @@ function abmplayground(model, initialiser; kwargs...)
 		# Replace old model with newly initialised model:
 		abmobs.model[] = initialiser(; kws...)
 	end
+	"""
 
 	(playgrnd_fig,abmobs)
 end

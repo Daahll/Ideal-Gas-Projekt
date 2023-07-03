@@ -12,7 +12,7 @@ module TD_Physics
 include("AgentTools.jl")
 using Agents, LinearAlgebra, GLMakie, InteractiveDynamics, GeometryBasics, Observables
 
-export calc_temperature, calc_pressure, calc_n_mol, calc_real_n_particles, momentum, kinetic_energy, scale_speed, calc_and_scale_speed, calc_total_vol_dimension
+export calc_temperature, calc_pressure, calc_n_mol, calc_real_n_particles, momentum, kinetic_energy, scale_speed, calc_and_scale_speed, calc_total_vol_dimension, calc_entropy_change, calc_internal_energy, calc_volume
 
 const R = 8.314
 #-----------------------------------------------------------------------------------------
@@ -30,21 +30,21 @@ end
 
 Scales a speed value to the interval [0,1] based on the provided max_speed.
 """
-	function scale_speed(speed, max_speed)
-		if speed > max_speed
-			speed = max_speed
-		end
-		return 5 * speed / max_speed
+function scale_speed(speed, max_speed)
+	if speed > max_speed
+		speed = max_speed
 	end
+	return 15 * speed / max_speed
+end
 #------------------------------------------------------------------------------------------
 """
 	calc_n_mol(model)
 
 Return the number of molecules in the system.
 """
-	function calc_n_mol(model)
-		return model.pressure_bar * 1e5 * model.total_volume / (8.314*model.temp)
-	end
+function calc_n_mol(model)
+	return model.pressure_bar * 1e5 * model.total_volume / (8.314*model.temp)
+end
 
 #------------------------------------------------------------------------------------------
 """
@@ -52,9 +52,9 @@ Return the number of molecules in the system.
 
 Return the number of particles in the system.
 """
-	function calc_real_n_particles(model)
-		return model.n_mol * 6.022e23
-	end
+function calc_real_n_particles(model)
+	return model.n_mol * 6.022e23
+end
 
 #------------------------------------------------------------------------------------------
 """
@@ -63,8 +63,8 @@ calc_total_vol_dimension( me, box)
 Calculates volume/dimension of a 3D-Space with [x, y=5, z=1], based on a given value of total volume.
 """
 function calc_total_vol_dimension(volume, x_axis_vol=5.0)
- 	y_axis_vol = volume/x_axis_vol
- 	return [y_axis_vol, x_axis_vol, 1.0] 
+	y_axis_vol = volume/x_axis_vol
+	return [y_axis_vol, x_axis_vol, 1.0] 
 end
 #-----------------------------------------------------------------------------------------
 """
@@ -72,15 +72,15 @@ end
 
 Return the pressure of the system.
 """
-	function calc_pressure(model)
-		n = model.n_mol # Anzahl der Moleküle (angenommen, jedes Partikel repräsentiert ein Molekül)
-		V = model.total_volume # Volumen des Behälters
-		T = model.temp # Durchschnittstemperatur der Moleküle
-		P = n * R * T / V
-		return P
-	end
+function calc_pressure(model)
+	n = model.n_mol # Anzahl der Moleküle (angenommen, jedes Partikel repräsentiert ein Molekül)
+	V = model.total_volume # Volumen des Behälters
+	T = model.temp # Durchschnittstemperatur der Moleküle
+	P = n * R * T / V
+	return P
+end
 
-end #------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------
 """
     calc_volume(model)
 
@@ -100,13 +100,13 @@ end
 
 Return the temperature of the system.
 """
-	function calc_temperature(model)   
-		P = model.pressure_pa
-		n = model.n_mol # Anzahl der Moleküle
-		V = model.total_volume
-		T = (P*V)/(R*n)
-		return T
-	end
+function calc_temperature(model)   
+	P = model.pressure_pa
+	n = model.n_mol # Anzahl der Moleküle
+	V = model.total_volume
+	T = (P*V)/(R*n)
+	return T
+end
 
 #------------------------------------------------------------------------------------------
 """
@@ -114,23 +114,23 @@ Return the temperature of the system.
 
 Return the change in entropy of the system.
 """
-	function calc_entropy_change(model)   
-		# Specific heat capacity depending on the thermodynamic process 
-		if model.mode == "druck-temp" || model.mode == "temp-druck"	# Isochor
-			# Cᵥ = 3/2 * R (monoatomic)												# TODO:Freiheitsgrade miteinbeziehen?-> Cᵥ = 5/2 * R (diatomic) 
-			C = 3/2 * R
-		elseif model.mode == "vol-temp" || model.mode == "temp-vol"	# Isobar						
-			# Cₚ = 5/2 * R (monoatomic)												# TODO: Cₚ = 7/2 * R (diatomic)	
-			C = 5/2 * R
-		else				# Isothermal process: No change in entropy
-			return 0.0
-		end
-		Δtemp = model.temp - model.temp_old			# ΔT = T₂ - T₁
-		ΔQ = model.n_mol * C * Δtemp				# ΔQ = n * C * ΔT (Heat Exchange)
-		ΔS = ΔQ / model.temp						# ΔS = ΔQ / T	(Change in Entropy)
-		model.temp_old = model.temp
-		return ΔS
+function calc_entropy_change(model)   
+	# Specific heat capacity depending on the thermodynamic process 
+	if model.mode == "druck-temp" || model.mode == "temp-druck"	# Isochor
+		# Cᵥ = 3/2 * R (monoatomic)												# TODO:Freiheitsgrade miteinbeziehen?-> Cᵥ = 5/2 * R (diatomic) 
+		C = 3/2 * R
+	elseif model.mode == "vol-temp" || model.mode == "temp-vol"	# Isobar						
+		# Cₚ = 5/2 * R (monoatomic)												# TODO: Cₚ = 7/2 * R (diatomic)	
+		C = 5/2 * R
+	else				# Isothermal process: No change in entropy
+		return 0.0
 	end
+	Δtemp = model.temp - model.temp_old			# ΔT = T₂ - T₁
+	ΔQ = model.n_mol * C * Δtemp				# ΔQ = n * C * ΔT (Heat Exchange)
+	ΔS = ΔQ / model.temp						# ΔS = ΔQ / T	(Change in Entropy)
+	model.temp_old = model.temp
+	return ΔS
+end
 
 #------------------------------------------------------------------------------------------
 """
@@ -138,10 +138,10 @@ Return the change in entropy of the system.
 
 Return the internal energy of the system.
 """
-	function calc_internal_energy(model)  
-		# Eᵢ = 3/2 * n * R * T (monoatomic) 
-		3/2 * model.n_mol * R * model.temp 			#TODO: Eᵢ = 5/2 * n * R * T (diatomic)
-	end
+function calc_internal_energy(model)  
+	# Eᵢ = 3/2 * n * R * T (monoatomic) 
+	3/2 * model.n_mol * R * model.temp 			#TODO: Eᵢ = 5/2 * n * R * T (diatomic)
+end
 
 #------------------------------------------------------------------------------------------
 """
@@ -149,12 +149,14 @@ Return the internal energy of the system.
 
 Return the scaled root mean squared speed of the particles based on temperature.
 """
-	function calc_and_scale_speed(model)  
-		max_speed = 3000 										# Maximum speed in m/s; Cap the visual speed at about T=1450 K, V=250L, p=4 bar
-		molare_masse_kg = model.molar_mass / 1000				# Convert g/mol to kg/mol
-		speed = sqrt((3 * R * model.temp) / molare_masse_kg)  	# Root mean squared speed based on temperature uᵣₘₛ = sqrt(3*R*T / M)
-		scaled_speed = TD_Physics.scale_speed(speed, max_speed)  			# Scale speed to avoid excessive velocities
-		return scaled_speed
-	end
+function calc_and_scale_speed(model)  
+	max_speed = 5000 										# Maximum speed in m/s; Cap the visual speed at about T=1450 K, V=250L, p=4 bar
+	molare_masse_kg = model.molar_mass / 1000				# Convert g/mol to kg/mol
+	speed = sqrt((3 * R * model.temp) / molare_masse_kg)  	# Root mean squared speed based on temperature uᵣₘₛ = sqrt(3*R*T / M)
+	scaled_speed = TD_Physics.scale_speed(speed, max_speed)  			# Scale speed to avoid excessive velocities
+	return scaled_speed
+end
 
 #------------------------------------------------------------------------------------------
+
+end # module
