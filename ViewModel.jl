@@ -13,7 +13,7 @@ include("AgentTools.jl")
 using Agents, LinearAlgebra, GLMakie, InteractiveDynamics, GeometryBasics, Observables
 
 export set_slider, add_or_remove_agents!, create_custom_slider
-
+#----------------------------------------------------------------------------------------
 function set_slider(value, slider, slider_value, unit)
     """
 
@@ -23,7 +23,7 @@ function set_slider(value, slider, slider_value, unit)
     slider_value.text[] = string(round(value, digits=2), " ", unit) # set text
     set_close_to!(slider, round(value, digits=2)) # set slider
 end
-
+#----------------------------------------------------------------------------------------
 function add_or_remove_agents!(model)
     """
 
@@ -51,7 +51,7 @@ function add_or_remove_agents!(model)
         model.n_particles_old = model.n_particles
     end
 end
-
+#----------------------------------------------------------------------------------------
 function create_custom_slider(gl_sliders, row_num, labeltext, fontsize, range, unit, startvalue)
     """
 

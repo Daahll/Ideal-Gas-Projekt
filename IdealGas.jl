@@ -322,7 +322,7 @@ end
 """
 	demo()
 
-Run a simulation of the IdealGas model.
+Run a simulation of the IdealGas model and init the UI.
 """
 	function demo()
 
@@ -337,7 +337,7 @@ Run a simulation of the IdealGas model.
 		plotkwargs = (; # kwargs for the plot
     		ac = :skyblue3, # color of the particles
     		scatterkwargs = (strokewidth = 1.0,), # kwargs for the scatterplot
-			as = 25.0, # size of the particles
+			as = 23.0, # size of the particles
 			add_colorbar = false,
 			heatarray=:heatmap, # type of heatmap
 			framerate = 60, # Refreshrate of the simulation
@@ -418,10 +418,10 @@ Run a simulation of the IdealGas model.
 			end
 			volume_label.text[] = string("Volumen: " * string(round(model.total_volume_m3, digits=4))* " m³ ; " * string(round(model.total_volume_m3 * 1000, digits=4)) * " L") # set the label for the volume of the box
 
-			set_slider(model.n_mol, n_mol_slider, n_mol_slider_value, "mol") # set the slider for the amount of substance
-			set_slider(model.temp, temp_slider, temp_slider_value, "K") # set the slider for the temperature
-			set_slider(model.pressure_pa, pressure_slider_pa, pressure_slider_pa_value, "Pa") # set the slider for the pressure in Pa
-			set_slider(model.pressure_bar, pressure_slider_bar, pressure_slider_bar_value, "Bar") # set the slider for the pressure in bar
+			ViewModel.set_slider(model.n_mol, n_mol_slider, n_mol_slider_value, "mol") # set the slider for the amount of substance
+			ViewModel.set_slider(model.temp, temp_slider, temp_slider_value, "K") # set the slider for the temperature
+			ViewModel.set_slider(model.pressure_pa, pressure_slider_pa, pressure_slider_pa_value, "Pa") # set the slider for the pressure in Pa
+			ViewModel.set_slider(model.pressure_bar, pressure_slider_bar, pressure_slider_bar_value, "Bar") # set the slider for the pressure in bar
 		end
 
 		on(gas_dropdown.selection) do selected_gas # if the gas changes
@@ -506,7 +506,7 @@ Run a simulation of the IdealGas model.
 				n_mol_slider_value.text[] = string(round(n_mol[], digits=2)) * " mol" # set the label of the slider
 				model.real_n_particles = round(model.n_mol * 6.022e23, digits=0) # calculate the real number of particles
 				model.n_particles = round(model.real_n_particles / 1e23, digits=0) # scale the number of particles to a reasonable/displayable number
-				add_or_remove_agents!(model) # add or remove agents to match the scaled number of particles
+				ViewModel.add_or_remove_agents!(model) # add or remove agents to match the scaled number of particles
 
 				if model.mode == "mol-temp" # if the mode is "mol-temp"
 					model.temp = PhysicalModel.calc_temperature(model) # calculate
