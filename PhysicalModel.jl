@@ -1,13 +1,13 @@
 <#========================================================================================#
 """
-TD_Physics
+PhysicalModel
 
-Costum Library of ThermoDynamics for IdealGas-simulation.
+Model of all the physical calculations for the thermodynamic simulation.
 
 Author: Francisco Hella, Felix Rollbühler, Melanie *, Jan Wiechmann, 20/06/23
 """
 
-module TD_Physics
+module PhysicalModel
 
 include("AgentTools.jl")
 using Agents, LinearAlgebra, GLMakie, InteractiveDynamics, GeometryBasics, Observables
@@ -43,13 +43,12 @@ end
 Return the number of molecules in the system.
 """
 function calc_n_mol(model)
-	return model.pressure_bar * 1e5 * model.total_volume / (8.314*model.temp)
+	return model.pressure_bar * 1e5 * model.total_volume_m3 / (8.314*model.temp)
 end
 
 #------------------------------------------------------------------------------------------
 """
 	calc_real_n_particles(model)
-
 Return the number of particles in the system.
 """
 function calc_real_n_particles(model)
@@ -74,7 +73,7 @@ Return the pressure of the system.
 """
 function calc_pressure(model)
 	n = model.n_mol # Anzahl der Moleküle (angenommen, jedes Partikel repräsentiert ein Molekül)
-	V = model.total_volume # Volumen des Behälters
+	V = model.total_volume_m3 # Volumen des Behälters
 	T = model.temp # Durchschnittstemperatur der Moleküle
 	P = n * R * T / V
 	return P
@@ -103,7 +102,7 @@ Return the temperature of the system.
 function calc_temperature(model)   
 	P = model.pressure_pa
 	n = model.n_mol # Anzahl der Moleküle
-	V = model.total_volume
+	V = model.total_volume_m3
 	T = (P*V)/(R*n)
 	return T
 end
@@ -153,7 +152,7 @@ function calc_and_scale_speed(model)
 	max_speed = 5000 										# Maximum speed in m/s; Cap the visual speed at about T=1450 K, V=250L, p=4 bar
 	molare_masse_kg = model.molar_mass / 1000				# Convert g/mol to kg/mol
 	speed = sqrt((3 * R * model.temp) / molare_masse_kg)  	# Root mean squared speed based on temperature uᵣₘₛ = sqrt(3*R*T / M)
-	scaled_speed = TD_Physics.scale_speed(speed, max_speed)  			# Scale speed to avoid excessive velocities
+	scaled_speed = PhysicalModel.scale_speed(speed, max_speed)  			# Scale speed to avoid excessive velocities
 	return scaled_speed
 end
 
