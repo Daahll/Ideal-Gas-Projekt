@@ -76,7 +76,6 @@ function idealgas(;
 	entropy_change = 0.0,												# Change in entropy of the gas
 	old_scaled_speed 		= 0.0,										# Scaled speed of the previous step
 	step 					= 0,										# Step counter
-	max_speed 				= 1000.0,									# Change in entropy of the gas
 	extent = (width,width),												# Extent of Particles space
 )
     space = ContinuousSpace(extent; spacing = 2.5)
@@ -110,7 +109,6 @@ function idealgas(;
 		:mode				=> mode,
 		:heatmap 			=> ones(width, width),
 		:radius				=> radius,
-		:max_speed			=> max_speed,
 		:width				=> width,
 		:start_volume		=> start_volume,
 	)
