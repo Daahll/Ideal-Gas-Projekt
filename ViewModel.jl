@@ -37,7 +37,7 @@ function add_or_remove_agents!(model)
         for _ in 1:(model.n_particles - model.n_particles_old) # add the difference
             vel = Tuple( 2rand(2).-1) # random velocity vector
             vel = vel ./ norm(vel) # normalize velocity vector
-            add_agent!( model, vel, model.mass_kg, scaled_speed, model.radius, non_id, -Inf)
+            add_agent!(model, vel, model.mass_kg, scaled_speed, model.radius, non_id, -Inf)
         end
 
         model.n_particles_old = model.n_particles

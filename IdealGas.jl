@@ -545,6 +545,7 @@ Run a simulation of the IdealGas model and init the UI.
 		on(n_mol_slider.value) do n_mol # if the slider for the number of moles changes
 			if model.mode == "mol-temp" || model.mode == "mol-druck" # if the mode is "mol-temp" or "mol-druck"
 				model.n_mol = n_mol[] # set the number of moles
+				model.mass_gas = round(model.n_mol * model.molar_mass, digits=3) # set the mass of the gas
 				n_mol_slider_value.text[] = string(round(n_mol[], digits=2)) * " mol" # set the label of the slider
 				model.real_n_particles = round(model.n_mol * 6.022e23, digits=0) # calculate the real number of particles
 				model.n_particles = round(model.real_n_particles / 1e23, digits=0) # scale the number of particles to a reasonable/displayable number
