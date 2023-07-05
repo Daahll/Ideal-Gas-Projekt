@@ -231,7 +231,7 @@ function check_particle_near_border!(me, model)
     x, y = me.pos
 	x_direction, y_direction = me.vel
 
-    if x < 2 + me.radius/2 && x_direction < 0
+    if x < 2 + me.radius/2 && x_direction < 0 # the "2" represents the limit range in which the particles are repelled 
         me.vel = (-me.vel[1], me.vel[2])
         #me.last_bounce = model.step 
     elseif x > model.reduce_volume_merker - 2 - me.radius/2 && x_direction > 0
@@ -288,14 +288,14 @@ function button_reduce_volume!(me, model)
 		# the new limit is set in the funktion check_particle_near_border
 	else
      if x > model.cylinder_pos - 2
-        if x_direction <= 0 # when particle moves to the left 
+        if x_direction <= 0 # when particle moves to the left and hit the cylinder 
             me.speed = me.speed + 1
 			me.vel = (me.vel[1] - 0.5 , me.vel[2]) 
 			# x-component is reinforced by impact with wall 
 			me.vel = me.vel ./ norm(me.vel) 
         end
 
-        if x_direction > 0 # when perticle moves to the right
+        if x_direction > 0 # when perticle moves to the right and hit the cylinder 
 		 me.vel = (-me.vel[1], me.vel[2]) # change direction
 		 me.vel = (me.vel[1] - 0.5 , me.vel[2])  
 		 me.vel = me.vel ./ norm(me.vel) # Create unit vector
@@ -334,7 +334,7 @@ function model_step!(model::ABM)
 	end
 	model.old_scaled_speed = scaled_speed # set the old scaled speed to the current scaled speed
 
-	model.step += 1.0
+	model.step += 1.0 # currently not used 
 
 	if model.cylinder_command == 1 && model.cylinder_pos > model.space.extent[1]/2 # expand cylinder
 		model.cylinder_pos = model.cylinder_pos - 0.5 # Change cylinder position
