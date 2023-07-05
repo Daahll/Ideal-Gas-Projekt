@@ -114,21 +114,32 @@ end
 Return the change in entropy of the system.
 """
 function calc_entropy_change(model)   
-	# Specific heat capacity depending on the thermodynamic process 
-	if model.mode == "druck-temp" || model.mode == "temp-druck"	# Isochor
-		# Cᵥ = 3/2 * R (monoatomic)												# TODO:Freiheitsgrade miteinbeziehen?-> Cᵥ = 5/2 * R (diatomic) 
-		C = 3/2 * R
-	elseif model.mode == "vol-temp" || model.mode == "temp-vol"	# Isobar						
-		# Cₚ = 5/2 * R (monoatomic)												# TODO: Cₚ = 7/2 * R (diatomic)	
-		C = 5/2 * R
-	else				# Isothermal process: No change in entropy
-		return 0.0
+	c_mp = 5/2 * R 											# Molar heat capacity at constant pressure in [J/molK]
+	c_p = c_mp * model.n_mol / model.mass_kg				# Specific heat capacity cₚ in [J/kgK]
+
+	c_mv = 3/2 * R 											# Molar heat capacity at constant volume 
+	c_v = c_mv * model.n_mol / model.mass_kg				# Specific heat capacity cᵥ
+
+	# Pressure & temperature change
+	if model.mode == "druck-temp" || model.mode == "temp-druck"	|| model.mode == "mol-druck" 
+		# Δs = cₚ · ln(T₂/T₁) + Rᵢ · ln(p₂/p₁) 			
+		Δs = c_p * log(model.temp/model.temp_old) + R * log(model.pressure_pa/model.pressure_pa_old)	# p in [Pa]
+	# Volume & temperature change
+	elseif model.mode == "vol-temp"	
+		# Δs = cᵥ · ln(T₂/T₁) + Rᵢ · ln(V₂/V₁)			
+		Δs = c_v * log(model.temp/model.temp_old) + R * log(model.total_volume_m3/model.total_volume_m3_old)	# V in [m³]	
+	# Volume & pressure change
+	elseif model.mode == "vol-druck" 
+		# Δs = cᵥ · ln(p₂/p₁)  + cₚ · ln(V₂/V₁)	
+		Δs = c_v * log(model.pressure_pa/model.pressure_pa_old) + c_p * log(model.total_volume_m3/model.total_volume_m3_old)
+	elseif model.mode == "mol-temp"
+		Δs = 0.0
 	end
-	Δtemp = model.temp - model.temp_old			# ΔT = T₂ - T₁
-	ΔQ = model.n_mol * C * Δtemp				# ΔQ = n * C * ΔT (Heat Exchange)
-	ΔS = ΔQ / model.temp						# ΔS = ΔQ / T	(Change in Entropy)
-	model.temp_old = model.temp
-	return ΔS
+	
+	model.temp_old = model.temp							# Set the system variables used in the next step
+	model.total_volume_m3_old = model.total_volume_m3
+
+	return Δs
 end
 
 #------------------------------------------------------------------------------------------
@@ -138,8 +149,8 @@ end
 Return the internal energy of the system.
 """
 function calc_internal_energy(model)  
-	# Eᵢ = 3/2 * n * R * T (monoatomic) 
-	3/2 * model.n_mol * R * model.temp 			#TODO: Eᵢ = 5/2 * n * R * T (diatomic)
+	# Eᵢ = 3/2 * n * R * T (at three degrees of freedom) 
+	3/2 * model.n_mol * R * model.temp 			
 end
 
 #------------------------------------------------------------------------------------------

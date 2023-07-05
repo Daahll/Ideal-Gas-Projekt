@@ -54,13 +54,15 @@ function idealgas(;
 				),				
 	mode = "temp-druck",
 	total_volume_m3 = 0.25,												# Total Volumen in m^3
+	total_volume_m3_old = 0.25,											# Total Volume in m^3 of the previous step
 	width = 500,														# Widht and height of the container in cm
 	start_volume = copy(total_volume_m3),								# Initial volume of the container
 	volume = calc_total_vol_dimension,									# Dimension of the container
 	temp = 293.15,														# Initial temperature of the gas in Kelvin
-	temp_old = 293.15,													# Temperature of the gas in Kelvin
+	temp_old = 293.15,													# Temperature of the gas in Kelvin of the previous step
 	pressure_bar = 1.0,													# Initial pressure of the gas in bar
 	pressure_pa =  100000,												# Initial pressure of the gas in Pascal
+	pressure_pa_old = 100000,											# Pressure of the gas in Pascal of the previous step
 	n_mol = pressure_pa * total_volume_m3 / (8.314*temp),				# Number of mol
 	init_n_mol = copy(n_mol), 											# Initial number of mol
 	real_n_particles = n_mol * 6.022e23,								# Real number of Particles in model: Reduction for simplicity
@@ -84,10 +86,12 @@ function idealgas(;
 		:temp				=> temp,
 		:temp_old			=> temp_old,
 		:total_volume_m3	=> total_volume_m3,
+		:total_volume_m3_old=> total_volume_m3_old,
 		:e_internal			=> e_internal,
 		:old_scaled_speed 	=> old_scaled_speed,
 		:entropy_change 	=> entropy_change,
 		:pressure_pa		=> pressure_pa,
+		:pressure_pa_old	=> pressure_pa_old,
 		:pressure_bar		=> pressure_bar,
 		:real_n_particles	=> real_n_particles,
 		:n_mol				=> n_mol,
@@ -130,7 +134,7 @@ Calculates volume/dimension of a 3D-Space with [x, y = 500, z=1], based on a giv
 """
 function calc_total_vol_dimension(volume_m3, y_axis=500.0)
 	x_axis = volume_m3/(y_axis/1000)
-	println(x_axis)
+	# println(x_axis)
  	return [x_axis, y_axis, 1.0] # return volume/dimension
 end
 
@@ -313,8 +317,8 @@ function model_step!(model::ABM)
 
 	"""
 	
-	model.entropy_change = calc_entropy_change(model) # calculate the entropy change
 	model.e_internal = calc_internal_energy(model) # calculate the internal energy
+	model.entropy_change = calc_entropy_change(model) # calculate the entropy change
 
 	scaled_speed = calc_and_scale_speed(model) # calculate the root mean square speed and scale it for visuals
 
@@ -352,6 +356,7 @@ function model_step!(model::ABM)
 		model.pressure_pa = PhysicalModel.calc_pressure(model) # Calculate the pressure
 		model.pressure_bar = model.pressure_pa / 1e5 # Calculate the pressure in bar
 	end
+	model.pressure_pa_old = model.pressure_pa	# Set old system variable for next step entropy calculation
 end
 
 #----------------------------------------------------------------------------------------
@@ -383,7 +388,7 @@ Run a simulation of the IdealGas model and init the UI.
 	
 		entropy(model) = model.entropy_change # Entropieänderung als Funktion für die Visualisierung
 		mdata = [entropy]
-		mlabels = ["ΔS in [J/K] (Entropieänderung)"]
+		mlabels = ["Δs in [J/kgK] (Entropieänderung)"]
 	
 		playground,abmobs = abmplayground( model, idealgas; # create playground
 			agent_step!,
@@ -447,7 +452,7 @@ Run a simulation of the IdealGas model and init the UI.
 		is_updating = false # variable to check if the model is updating
 
 		on(abmobs.model) do _ # if the model is updated
-			e_internal_label.text[] = string("Eᵢ: ", string(round(model.e_internal)), " J") # set the label for the internal energy of the gas
+			e_internal_label.text[] = string("Eᵢ: ", string(round(model.e_internal, digits=2)), " J") # set the label for the internal energy of the gas
 			if model.mass_gas > 999.9 # if the mass of the gas is greater than 999.9
 				mass_label.text[] = string("Masse: ", string(round(model.mass_gas/1000, digits=3), " kg")) # set the label for the mass of the gas in kg
 			else
@@ -470,6 +475,8 @@ Run a simulation of the IdealGas model and init the UI.
 
 		on(mode_dropdown.selection) do selected_mode # if the mode changes
 			model.mode = model.modes[selected_mode] # set the mode
+			# Stop the volume change on mode change to prevent polytropic processes
+			model.cylinder_command = 0
 		end
 		
 		on(temp_slider.value) do temp # if the value of the temperature slider changes
@@ -557,7 +564,12 @@ Run a simulation of the IdealGas model and init the UI.
 		end
 
 		on(increase_vol_btn.clicks) do _ # if the button to increase the volume is clicked
-			model.cylinder_command = 2 # setze den Befehl zum Erhöhen des Volumens
+			# Only allow to change volume if in the correct mode
+			if model.mode == "vol-druck" || model.mode == "vol-temp"
+				model.cylinder_command = 2 # setze den Befehl zum Erhöhen des Volumens
+			else
+				model.cylinder_command = 0
+			end
 		end  
 
 		on(pause_vol_btn.clicks) do _ # if the button to pause the volume is clicked
@@ -565,7 +577,11 @@ Run a simulation of the IdealGas model and init the UI.
 		end 
 
 		on(decrease_vol_btn.clicks) do _ # if the button to decrease the volume is clicked
-			model.cylinder_command = 1 # set the command to decrease the volume
+			if model.mode == "vol-druck" || model.mode == "vol-temp"
+				model.cylinder_command = 1 # set the command to decrease the volume
+			else
+				model.cylinder_command = 0
+			end
 		end
 
 		playground # draw the playground

@@ -10,9 +10,11 @@ Author: Francisco Hella, Felix Rollbühler, Melanie Heinrich, Jan Wiechmann, 20/
 module ViewModel
 
 include("AgentTools.jl")
+include("PhysicalModel.jl")
 using Agents, LinearAlgebra, GLMakie, InteractiveDynamics, GeometryBasics, Observables
 
 export set_slider, add_or_remove_agents!, create_custom_slider
+const non_id = -1
 #----------------------------------------------------------------------------------------
 function set_slider(value, slider, slider_value, unit)
     """
@@ -31,7 +33,7 @@ function add_or_remove_agents!(model)
 
     """
     if model.n_particles > model.n_particles_old # if n_particles is increased
-        scaled_speed = calc_and_scale_speed(model)
+        scaled_speed = PhysicalModel.calc_and_scale_speed(model)
         for _ in 1:(model.n_particles - model.n_particles_old) # add the difference
             vel = Tuple( 2rand(2).-1) # random velocity vector
             vel = vel ./ norm(vel) # normalize velocity vector
