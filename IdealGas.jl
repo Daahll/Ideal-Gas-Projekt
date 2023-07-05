@@ -42,7 +42,7 @@ const R = 8.314 # Gaskonstante in J/(mol·K)
 Create and initialise the IdealGas model.
 """
 function idealgas(;
-	gases = Dict("Helium" => 4.0, "Hydrogen" => 1.0, "Oxygen" => 32.0),	# Gas types
+	gases = Dict("Helium" => 4.002602, "Hydrogen" => 2.01568, "Oxygen" => 31.998),	# Gas types
 	modes = Dict("Temperatur:Druck" => "temp-druck", 					# modes of calculations
 				#"Temperatur:Volumen" => "temp-vol",
 				 "Druck:Temperatur" => "druck-temp",
@@ -68,12 +68,13 @@ function idealgas(;
 	real_n_particles = n_mol * 6.022e23,								# Real number of Particles in model: Reduction for simplicity
     n_particles = round(real_n_particles/1e23, digits=0),				# Number of Particles in simulation model
 	n_particles_old 		= copy(n_particles), 						# Number of Particles in simulation model
-	molar_mass 				= 4.0,										# Helium Gas mass in atomic mass units
+	molar_mass 				= 4.002602,									# Helium Gas mass in atomic mass units
 	mass_kg 				= molar_mass * 1.66053906660e-27,			# Convert atomic/molecular mass to kg
 	mass_gas 				= round(n_mol * molar_mass, digits=3),		# Mass of gas
 	radius 					= 8.0,										# Radius of Particles in the model
 	e_internal = 3/2 * n_mol * 8.314 * temp,							# Inner energy of the gas
-	entropy_change = 0.0,												# Change in entropy of the gas
+	entropy_change = 0.0,												# Change in entropy of the gas,
+	f = 3,																# Degrees of freedom of the gas molecules,
 	old_scaled_speed 		= 0.0,										# Scaled speed of the previous step
 	step 					= 0,										# Step counter
 	extent = (width,width),												# Extent of Particles space
@@ -87,6 +88,7 @@ function idealgas(;
 		:total_volume_m3	=> total_volume_m3,
 		:total_volume_m3_old=> total_volume_m3_old,
 		:e_internal			=> e_internal,
+		:f					=> f,
 		:old_scaled_speed 	=> old_scaled_speed,
 		:entropy_change 	=> entropy_change,
 		:pressure_pa		=> pressure_pa,
@@ -468,7 +470,12 @@ Run a simulation of the IdealGas model and init the UI.
 			model.molar_mass = model.gases[selected_gas] # set the molar mass of the gas
 			model.mass_kg = model.molar_mass * 1.66054e-27 # set the mass in kg of one molecule of the gas
 			model.mass_gas = round(model.n_mol * model.molar_mass, digits=3) # set the mass of the gas
-			
+			# Set the degrees of freedom of the gas molecules depending on the selected gas
+			if selected_gas == "Helium"
+				model.f = 3				# Monoatomic gas
+			else
+				model.f = 5 			# Diatomic gas (Hydrogen or Oxygen)
+			end
 		end
 
 		on(mode_dropdown.selection) do selected_mode # if the mode changes

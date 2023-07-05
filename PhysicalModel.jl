@@ -111,29 +111,29 @@ end
 """
 	calc_entropy_change
 
-Return the change in entropy of the system.
+Calculate the specific heat capacity and return the change in entropy of the gas depening on the thermodynamic process.
 """
-function calc_entropy_change(model)   
-	c_mp = 5/2 * R 											# Molar heat capacity at constant pressure in [J/molK]
-	c_p = c_mp * model.n_mol / model.mass_kg				# Specific heat capacity cₚ in [J/kgK]
+function calc_entropy_change(model) 
+	mass_gas_kg = model.mass_gas / 1000											# Convert g to kg			
+	molar_mass_kg = model.molar_mass / 1000										# Convert g/mol to kg/mol
+	R_i = round((R / molar_mass_kg), digits=3)									# Individual gas constant
 
-	c_mv = 3/2 * R 											# Molar heat capacity at constant volume 
-	c_v = c_mv * model.n_mol / model.mass_kg				# Specific heat capacity cᵥ
-
-	# Pressure & temperature change
+	# Isochoric process or Isochoric & isothermal process
 	if model.mode == "druck-temp" || model.mode == "temp-druck"	|| model.mode == "mol-druck" 
+		c_mp = (model.f + 2)* R/2													# Molar heat capacity at constant pressure in [J/molK]
+		# Round every parameter to 3 digits
+		c_p = round(c_mp, digits=3) * round(model.n_mol, digits=3) / mass_gas_kg 	# Specific heat capacity cₚ in [J/kgK]
 		# Δs = cₚ · ln(T₂/T₁) + Rᵢ · ln(p₂/p₁) 			
-		Δs = c_p * log(model.temp/model.temp_old) + R * log(model.pressure_pa/model.pressure_pa_old)	# p in [Pa]
-	# Volume & temperature change
-	elseif model.mode == "vol-temp"	
+		Δs = c_p * log(model.temp/model.temp_old) + R_i * log(model.pressure_pa/model.pressure_pa_old)
+
+	elseif model.mode == "vol-temp"	|| model.mode == "vol-druck" 					# Isobaric process or isothermal process
+		c_mv = model.f * R/2 														# Molar heat capacity at constant volume 
+		c_v = round(c_mv, digits=3) * round(model.n_mol, digits=3) / mass_gas_kg	# Specific heat capacity cᵥ
 		# Δs = cᵥ · ln(T₂/T₁) + Rᵢ · ln(V₂/V₁)			
-		Δs = c_v * log(model.temp/model.temp_old) + R * log(model.total_volume_m3/model.total_volume_m3_old)	# V in [m³]	
-	# Volume & pressure change
-	elseif model.mode == "vol-druck" 
-		# Δs = cᵥ · ln(p₂/p₁)  + cₚ · ln(V₂/V₁)	
-		Δs = c_v * log(model.pressure_pa/model.pressure_pa_old) + c_p * log(model.total_volume_m3/model.total_volume_m3_old)
+		Δs = c_v * log(model.temp/model.temp_old) + R_i * log(model.total_volume_m3/model.total_volume_m3_old)
+	
 	elseif model.mode == "mol-temp"
-		Δs = 0.0
+		Δs = 0.0 # Entropy change calculation missing for mode:mol-temp
 	end
 	
 	model.temp_old = model.temp							# Set the system variables used in the next step
@@ -149,8 +149,7 @@ end
 Return the internal energy of the system.
 """
 function calc_internal_energy(model)  
-	# Eᵢ = 3/2 * n * R * T (at three degrees of freedom) 
-	3/2 * model.n_mol * R * model.temp 			
+	model.f * 1/2 * model.n_mol * R * model.temp 		# Eᵢ = f * 1/2 * n * R * T 	
 end
 
 #------------------------------------------------------------------------------------------
@@ -160,10 +159,10 @@ end
 Return the scaled root mean squared speed of the particles based on temperature.
 """
 function calc_and_scale_speed(model)  
-	max_speed = 5000 										# Maximum speed in m/s; Cap the visual speed at about T=1450 K, V=250L, p=4 bar
-	molare_masse_kg = model.molar_mass / 1000				# Convert g/mol to kg/mol
-	speed = sqrt((3 * R * model.temp) / molare_masse_kg)  	# Root mean squared speed based on temperature uᵣₘₛ = sqrt(3*R*T / M)
-	scaled_speed = PhysicalModel.scale_speed(speed, max_speed)  			# Scale speed to avoid excessive velocities
+	max_speed = 5000									# Maximum speed in m/s; Cap the visual speed at about T=3700 K, V=250 L, p=4 bar, n=4 mol
+	molar_mass_kg = model.molar_mass / 1000				# Convert g/mol to kg/mol
+	speed = sqrt((3 * R * model.temp) / molar_mass_kg)  # Root mean squared speed based on temperature uᵣₘₛ = sqrt(3*R*T / M)
+	scaled_speed = PhysicalModel.scale_speed(speed, max_speed)  	# Scale speed to avoid excessive velocities
 	return scaled_speed
 end
 
